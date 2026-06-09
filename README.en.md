@@ -16,7 +16,7 @@ It is designed for:
 
 Typical workflows:
 
-- Scan an item code to check stock and location.
+- Scan an item code to confirm the item and current stock.
 - Scan a weight code plus an item code to update remaining filament or estimated part quantity.
 - Scan a location code plus an item code to bind a new location.
 - Generate labels for new items so future actions start from scanning.
