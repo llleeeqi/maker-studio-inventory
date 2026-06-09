@@ -116,13 +116,15 @@ Mid term:
 - Batch item import.
 - Location and shelf-based inventory views.
 - More detailed merge conflict previews.
+- Natural language assistant queries like: "How much black PLA is left?" and "Which items are low stock?"
+- Research a Docker server + progressive PWA path, including mobile browser scanning, offline support, and performance limits.
 - Release signing and versioned releases.
 
 Long term:
 
-- Use the phone as the main inventory device with a LAN serving mode.
-- Let desktop browsers access the same inventory.
-- Natural language assistant queries like: "How much black PLA is left?" and "Which items are low stock?"
+- Use a Docker server as the shared data host, with phones and desktops accessing it through a PWA.
+- Keep the Android APK as the high-frequency scanning entry if PWA scanning or offline performance is not good enough.
+- Multi-device collaboration, permissions, and backup recovery workflows.
 
 ## Documentation
 
