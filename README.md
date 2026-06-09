@@ -1,103 +1,55 @@
 # 工作室物品管理
 
-当前是最小检测版：纯 Web 核心，无构建依赖。重点是 **基于二维码输入的快捷库存管理**，不是单独的二维码生成工具。
+[English](./README.en.md)
 
-扫码模块是外挂：核心只接收扫码结果字符串。无论是 Android 原生扫码、网页扫码库、扫码枪，还是测试按钮，只要把 `spool:...` / `weight:...` 这类 payload 交给 `window.StudioInventoryScanner.push()` 即可。
+这是一个给小工作室用的库存管理项目，核心目标是把“找东西、盘库存、贴标签、移动库位”这些琐碎动作做得足够快。
 
-## 打开方式
+项目不是单纯的二维码生成器。二维码只是入口，真正要解决的是：物品在工作室里流动时，用户能用扫码快速知道它是谁、在哪、还剩多少，并把变化记录下来。
 
-### 安装 APK
+## 用途
 
-当前已生成 Android debug APK：
+适合管理这些东西：
 
-```text
-studio-inventory-debug.apk
-```
+- 3D 打印耗材卷：PLA、PETG、ABS、TPU 等。
+- 小五金零件：热熔螺母、螺丝、轴承、连接件等。
+- 工具、耗材、备件、盒子和货架库位。
 
-这是可直接安装的调试签名包。Android 手机上如果提示来源限制，需要允许“安装未知来源应用”。
+典型动作：
 
-### 浏览器检测版
+- 扫物品码，马上查库存和库位。
+- 扫重量码和物品码，自动更新耗材余量或零件估算数量。
+- 扫库位码和物品码，快速绑定新位置。
+- 给新增物品生成标签，后续所有操作从扫码开始。
+- 导出快照，后续做 WebDAV 同步或备份恢复。
 
-在本目录启动静态服务：
-
-```bash
-python3 -m http.server 8080
-```
-
-然后访问：
+## 核心理念
 
 ```text
-正式库存软件：http://127.0.0.1:8080/app/
-测试工具页：http://127.0.0.1:8080/tools/
+扫码 -> 算出 -> 更新，尽量 10 秒内完成。
 ```
 
-## 已有功能
+设计上优先保证：
 
-- 样例库存数据
-- 新增/编辑耗材卷和零件
-- 手动模拟二维码输入
-- 查库存：扫 `spool:` / `part:` 立即显示库存和库位
-- 盘点称重：扫 `weight:` + 物品码，顺序不限，自动写库存
-- 绑定库位：扫 `location:` + 物品码，顺序不限，自动更新库位
-- `weight:` + `spool:` 更新耗材毛重并计算可用重量
-- `weight:` + `part:` 更新零件估算数量
-- 库存搜索
-- 类型筛选和低库存筛选
-- 物品标签二维码生成
-- 流水记录
-- 本地 localStorage 保存
-- JSON 快照导出
-- 当前筛选结果导出
-- JSON 快照导入
-- JSON 快照合并导入
-- 合并导入预览
-- 物品归档/恢复
-- 从已有物品克隆参数
-- 按材料、颜色或名称自动生成 ID
+- 离线可用：工作室没网也能查和记。
+- 输入简单：扫码结果只是 `weight:` / `spool:` / `part:` / `location:` 这类字符串。
+- 核心可复用：库存计算、状态机、快照合并都放在 `core/`，不绑死 Android 或浏览器。
+- 同步外挂：本地先写成功，同步后续用 WebDAV 合并，不让网络阻塞盘点。
+- 打印后置：标签打印是输出能力，不影响库存主流程。
 
-## 两个入口
+## 当前形态
 
-- `app/`：正儿八经使用的软件。第一屏就是扫码工作台。
-- `tools/`：测试工具。用于生成重量码、物品码、库位码，方便在手机上扫。
-- `core/`：平台无关核心。Android/Web/Docker 都应该复用它。
+第一版已经跑通了核心闭环：
 
-## 后续开发文档
+- 快捷扫码工作台。
+- 耗材卷和零件目录。
+- 库存搜索、筛选、低库存判断。
+- 归档、恢复、克隆和自动 ID。
+- 标签二维码预览。
+- 流水记录。
+- JSON 快照导入、导出、合并和预览。
+- Web 检测版和 Capacitor Android 壳。
 
-从 [docs/README.md](./docs/README.md) 开始看。
-
-- [docs/00-project-map.md](./docs/00-project-map.md)：文件分工和为什么这么分
-- [docs/01-qr-input-workflows.md](./docs/01-qr-input-workflows.md)：二维码输入库存流程
-- [docs/02-android-apk.md](./docs/02-android-apk.md)：Android APK 路线
-- [docs/03-data-and-sync.md](./docs/03-data-and-sync.md)：本地数据和 WebDAV 同步
-- [docs/04-next-steps.md](./docs/04-next-steps.md)：下一阶段开发清单
-- [docs/05-catalog-management.md](./docs/05-catalog-management.md)：物品目录新增、编辑和字段规则
-- [docs/06-inventory-filters.md](./docs/06-inventory-filters.md)：库存搜索、类型筛选和低库存筛选
-- [docs/07-core-shell-boundary.md](./docs/07-core-shell-boundary.md)：核心和外壳的边界记录，Android 优先时重点看
-- [docs/08-first-version-app.md](./docs/08-first-version-app.md)：第一版正式 app 当前状态、验证方式和已知边界
-
-## APK 方向
-
-网页核心已经接入 Capacitor Android 壳，并产出 debug APK。当前 APK 使用 WebView 承载本地 `www/` 静态资源：
-
-- UI 和业务逻辑继续复用当前 Web Core。
-- 数据先存在本地，后续替换成 SQL.js + 文件快照。
-- 扫码不要长期靠浏览器 JS 解码，APK 内接 Android 原生扫码插件。
-- 以后同一套核心也能放到 Docker 里做网页版。
-
-重新构建：
-
-```bash
-npm run apk:debug
-```
-
-输出路径：
-
-```text
-android/app/build/outputs/apk/debug/app-debug.apk
-studio-inventory-debug.apk
-```
-
-## 当前协议
+扫码协议：
 
 ```text
 weight:712.4
@@ -106,8 +58,82 @@ part:M3-INSERT
 location:RACK-A01
 ```
 
-## 下一步
+扫码输入边界：
+
+```js
+window.StudioInventoryScanner.push("spool:PLA-BLK-001");
+window.StudioInventoryScanner.push({ rawValue: "weight:712.4" });
+```
+
+任何扫码来源只要能把 payload 交给这个入口，就能复用同一套库存流程。
+
+## 结构图
+
+```mermaid
+flowchart LR
+  User[用户<br/>扫码 / 编辑 / 导入导出] --> Shell[app/<br/>正式使用界面]
+  Tools[tools/<br/>测试二维码] --> Shell
+  Android[android/<br/>Capacitor APK 壳] --> Shell
+
+  Shell --> Scanner[scanner-port<br/>扫码输入归一化]
+  Scanner --> Workflow[workflow<br/>扫码状态机]
+  Workflow --> Inventory[inventory<br/>库存计算 / 流水]
+
+  Shell --> Catalog[catalog<br/>物品目录]
+  Shell --> Filters[filters<br/>搜索与筛选]
+  Shell --> Snapshot[snapshot<br/>快照导入导出]
+  Snapshot --> Merge[merge<br/>快照合并]
+
+  Shell <--> Storage[storage<br/>当前 localStorage]
+  Core[core/<br/>平台无关核心] --> Scanner
+  Build[build-web<br/>打包 app/core 到 www] --> Android
+  Docs[docs/<br/>设计和排查记录]
+```
+
+## 目录
+
+| 路径 | 作用 |
+|---|---|
+| `app/` | 正式使用界面，第一屏是扫码工作台 |
+| `core/` | 平台无关业务核心 |
+| `tools/` | 测试二维码工具 |
+| `android/` | Capacitor Android 壳 |
+| `scripts/` | 构建辅助脚本 |
+| `tests/` | 核心流程测试 |
+| `docs/` | 设计、排查、后续开发记录 |
+
+## 后续方向
+
+近期：
 
 - Android 原生扫码替换手动输入。
 - SQL.js + Capacitor Filesystem 替换 localStorage。
-- 增加 WebDAV 快照同步。
+- WebDAV 快照同步。
+- 标签模板和精臣 BLE 打印。
+
+中期：
+
+- 批量导入物品。
+- 按库位/货架组织库存视图。
+- 更细的合并冲突预览。
+- release 签名包和版本发布流程。
+
+远期：
+
+- 手机作为主设备，开启局域网伺服模式。
+- 桌面浏览器访问同一份库存。
+- 自然语言助手查询：“黑色 PLA 还剩多少？”“哪些东西低库存？”
+
+## 文档
+
+从 [docs/README.md](./docs/README.md) 开始看。
+
+- [docs/00-project-map.md](./docs/00-project-map.md)：文件分工。
+- [docs/01-qr-input-workflows.md](./docs/01-qr-input-workflows.md)：二维码输入流程。
+- [docs/02-android-apk.md](./docs/02-android-apk.md)：Android APK 路线。
+- [docs/03-data-and-sync.md](./docs/03-data-and-sync.md)：本地数据和同步。
+- [docs/04-next-steps.md](./docs/04-next-steps.md)：下一阶段清单。
+- [docs/05-catalog-management.md](./docs/05-catalog-management.md)：物品目录规则。
+- [docs/06-inventory-filters.md](./docs/06-inventory-filters.md)：库存筛选。
+- [docs/07-core-shell-boundary.md](./docs/07-core-shell-boundary.md)：核心和外壳边界。
+- [docs/08-first-version-app.md](./docs/08-first-version-app.md)：第一版状态和验证。
