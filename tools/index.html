@@ -3,22 +3,53 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>工作室物品管理测试工具</title>
+    <title>二维码测试工具</title>
     <link rel="stylesheet" href="../app/styles.css" />
   </head>
   <body>
     <header class="topbar">
       <div>
-        <h1>测试工具</h1>
-        <p>用于生成标签、重量、库位二维码</p>
+        <h1>二维码测试工具</h1>
+        <p>给工作室库存软件生成 `weight`、`spool`、`part`、`location` 测试码</p>
       </div>
       <a class="link-button" href="../app/">正式 app</a>
     </header>
 
     <main>
-      <section class="qr-generator">
-        <div class="form-grid">
-          <label>
+      <section class="tool-hero">
+        <div>
+          <h2>测试工作台</h2>
+          <p>选类型、填字段、直接生成二维码。不会写协议也能自己造测试数据。</p>
+        </div>
+        <div class="tool-protocol">
+          <strong>支持的 payload</strong>
+          <code>weight:&lt;grams&gt;</code>
+          <code>spool:&lt;id&gt;</code>
+          <code>part:&lt;id&gt;</code>
+          <code>location:&lt;code&gt;</code>
+          <code>raw:&lt;custom&gt;</code>
+        </div>
+      </section>
+
+      <section class="tool-layout">
+        <section class="tool-panel">
+          <div class="tool-section-head">
+            <h2>手动生成</h2>
+            <div class="tool-actions">
+              <button id="randomCurrent" type="button" class="ghost">随机当前类型</button>
+              <button id="makeQr" type="button">生成二维码</button>
+            </div>
+          </div>
+
+          <div class="tool-type-row">
+            <button type="button" class="tool-type active" data-type-select="weight">weight</button>
+            <button type="button" class="tool-type" data-type-select="spool">spool</button>
+            <button type="button" class="tool-type" data-type-select="part">part</button>
+            <button type="button" class="tool-type" data-type-select="location">location</button>
+            <button type="button" class="tool-type" data-type-select="raw">raw</button>
+          </div>
+
+          <label class="tool-hidden-select">
             类型
             <select id="qrType">
               <option value="weight">weight</option>
@@ -28,25 +59,118 @@
               <option value="raw">raw</option>
             </select>
           </label>
-          <label>
-            内容
-            <input id="qrValue" value="712.4" />
-          </label>
-          <button id="makeQr">生成二维码</button>
-        </div>
 
-        <div class="quick-payloads">
-          <button data-type="spool" data-value="PLA-BLK-001">黑 PLA 卷</button>
-          <button data-type="part" data-value="M3-INSERT">M3 螺母</button>
-          <button data-type="weight" data-value="712.4">重量 712.4g</button>
-          <button data-type="weight" data-value="256.0">重量 256g</button>
-          <button data-type="location" data-value="RACK-A01">A01 库位</button>
-        </div>
+          <div id="fieldHint" class="tool-hint"></div>
 
-        <div class="qr-output">
-          <div id="qrOutput" class="qr-box"></div>
-          <code id="qrPayload">weight:712.4</code>
+          <div id="fieldsWeight" class="tool-fields active">
+            <div class="tool-field-grid">
+              <label>
+                重量（克）
+                <input id="weightGrams" inputmode="decimal" placeholder="712.4" value="712.4" />
+              </label>
+            </div>
+          </div>
+
+          <div id="fieldsSpool" class="tool-fields">
+            <div class="tool-field-grid">
+              <label>
+                直接填 ID
+                <input id="spoolId" placeholder="PLA-BLK-001" />
+              </label>
+              <label>
+                材料
+                <input id="spoolMaterial" placeholder="PLA / PETG / ABS" value="PLA" />
+              </label>
+              <label>
+                颜色
+                <input id="spoolColor" placeholder="黑色 / 透明 / 红色" value="黑色" />
+              </label>
+              <label>
+                序号
+                <input id="spoolSerial" inputmode="numeric" placeholder="001" value="001" />
+              </label>
+            </div>
+          </div>
+
+          <div id="fieldsPart" class="tool-fields">
+            <div class="tool-field-grid">
+              <label>
+                直接填 ID
+                <input id="partId" placeholder="M3-INSERT" />
+              </label>
+              <label>
+                名称
+                <input id="partName" placeholder="M3 热熔螺母" value="M3 热熔螺母" />
+              </label>
+              <label>
+                规格
+                <input id="partSpec" placeholder="M3 / 608 / M2x8" value="M3" />
+              </label>
+            </div>
+          </div>
+
+          <div id="fieldsLocation" class="tool-fields">
+            <div class="tool-field-grid">
+              <label>
+                直接填库位
+                <input id="locationId" placeholder="RACK-A01" />
+              </label>
+              <label>
+                区域
+                <input id="locationArea" placeholder="RACK / BOX / BIN" value="RACK" />
+              </label>
+              <label>
+                排号
+                <input id="locationRow" placeholder="A" value="A" />
+              </label>
+              <label>
+                位号
+                <input id="locationSlot" inputmode="numeric" placeholder="01" value="01" />
+              </label>
+            </div>
+          </div>
+
+          <div id="fieldsRaw" class="tool-fields">
+            <div class="tool-field-grid single">
+              <label>
+                自定义 payload
+                <input id="rawPayload" placeholder="spool:PLA-BLK-001" value="weight:712.4" />
+              </label>
+            </div>
+          </div>
+
+          <div class="tool-section-head compact">
+            <h2>一键样例</h2>
+            <button id="randomAll" type="button" class="ghost">整页随机刷新</button>
+          </div>
+          <div class="quick-payloads quick-payloads-tools">
+            <button data-sample="spool">随机耗材卷</button>
+            <button data-sample="part">随机零件</button>
+            <button data-sample="weight">随机重量</button>
+            <button data-sample="location">随机库位</button>
+            <button data-sample="raw">随机原始码</button>
+          </div>
+        </section>
+
+        <section class="tool-panel preview-panel">
+          <div class="tool-section-head">
+            <h2>当前二维码</h2>
+            <button id="copyPayload" type="button" class="ghost">复制 payload</button>
+          </div>
+          <div class="qr-output">
+            <div id="qrOutput" class="qr-box"></div>
+            <code id="qrPayload">weight:712.4</code>
+          </div>
+          <div id="copyStatus" class="tool-hint">复制后可直接贴到扫码测试里。</div>
+        </section>
+      </section>
+
+      <section class="tool-panel">
+        <div class="tool-section-head">
+          <h2>批量样例</h2>
+          <p class="tool-subtitle">给手机、平板或朋友直接扫码测流程。</p>
         </div>
+        <div id="sampleGrid" class="sample-grid"></div>
       </section>
     </main>
 
