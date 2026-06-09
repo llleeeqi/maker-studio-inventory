@@ -1,8 +1,10 @@
-# Studio Inventory Manager
+# Maker Studio Inventory Manager
 
 [中文](./README.md)
 
-This project is an inventory manager for small studios. Its main goal is to make everyday actions like finding items, checking stock, printing labels, and moving inventory fast enough for real workshop use.
+This project is an inventory manager for personal studios, maker spaces, and small 3D printing work areas. It is designed for 3D printing filament, hardware parts, tools, spare parts, and storage locations.
+
+Its main goal is to make everyday actions like identifying items, checking remaining stock, printing labels, moving inventory, and exporting backups fast enough for repeated use at a real workbench.
 
 It is not just a QR-code generator. QR codes are the input layer. The real goal is to know what an item is, where it is, how much is left, and record changes with as little friction as possible.
 
