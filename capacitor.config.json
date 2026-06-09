@@ -1,0 +1,8 @@
+{
+  "appId": "studio.inventory.core",
+  "appName": "工作室物品管理",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

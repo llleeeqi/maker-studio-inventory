@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>工作室物品管理测试工具</title>
+    <link rel="stylesheet" href="../app/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>测试工具</h1>
+        <p>用于生成标签、重量、库位二维码</p>
+      </div>
+      <a class="link-button" href="../app/">正式 app</a>
+    </header>
+
+    <main>
+      <section class="qr-generator">
+        <div class="form-grid">
+          <label>
+            类型
+            <select id="qrType">
+              <option value="weight">weight</option>
+              <option value="spool">spool</option>
+              <option value="part">part</option>
+              <option value="location">location</option>
+              <option value="raw">raw</option>
+            </select>
+          </label>
+          <label>
+            内容
+            <input id="qrValue" value="712.4" />
+          </label>
+          <button id="makeQr">生成二维码</button>
+        </div>
+
+        <div class="quick-payloads">
+          <button data-type="spool" data-value="PLA-BLK-001">黑 PLA 卷</button>
+          <button data-type="part" data-value="M3-INSERT">M3 螺母</button>
+          <button data-type="weight" data-value="712.4">重量 712.4g</button>
+          <button data-type="weight" data-value="256.0">重量 256g</button>
+          <button data-type="location" data-value="RACK-A01">A01 库位</button>
+        </div>
+
+        <div class="qr-output">
+          <div id="qrOutput" class="qr-box"></div>
+          <code id="qrPayload">weight:712.4</code>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./tools.js"></script>
+  </body>
+</html>

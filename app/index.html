@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>工作室物品管理</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>工作室物品管理</h1>
+        <p id="storageStatus">本地检测版</p>
+      </div>
+      <button id="resetDemo" class="ghost">重置样例</button>
+    </header>
+
+    <nav class="tabs" aria-label="主功能">
+      <button class="tab active" data-view="scanView">快捷扫码</button>
+      <button class="tab" data-view="inventoryView">查库存</button>
+      <button class="tab" data-view="labelView">打标签</button>
+      <button class="tab" data-view="transactionView">流水</button>
+    </nav>
+
+    <main>
+      <section id="scanView" class="view active">
+        <div class="scan-panel">
+          <div class="mode-row" aria-label="扫码操作">
+            <button class="mode active" data-mode="lookup">查库存</button>
+            <button class="mode" data-mode="stocktake">盘点称重</button>
+            <button class="mode" data-mode="move">绑定库位</button>
+          </div>
+
+          <div class="status-strip">
+            <div>
+              <span class="label">操作</span>
+              <strong id="scanModeLabel">查库存</strong>
+            </div>
+            <div>
+              <span class="label">重量</span>
+              <strong id="pendingWeight">未扫描</strong>
+            </div>
+            <div>
+              <span class="label">物品</span>
+              <strong id="pendingItem">未扫描</strong>
+            </div>
+            <div>
+              <span class="label">库位</span>
+              <strong id="pendingLocation">未扫描</strong>
+            </div>
+          </div>
+
+          <div class="scan-input">
+            <input id="scanText" autocomplete="off" placeholder="扫码内容：spool:PLA-BLK-001 / weight:712.4 / location:RACK-A01" />
+            <button id="scanSubmit">处理</button>
+          </div>
+
+          <div class="quick-payloads">
+            <button data-payload="spool:PLA-BLK-001">黑 PLA 卷</button>
+            <button data-payload="weight:712.4">重量 712.4g</button>
+            <button data-payload="part:M3-INSERT">M3 螺母</button>
+            <button data-payload="weight:256.0">重量 256g</button>
+            <button data-payload="location:RACK-A01">A01 库位</button>
+          </div>
+
+          <div id="scanResult" class="result">查库存：扫物品码后立即显示库存和库位。</div>
+          <div id="scanLog" class="scan-log"></div>
+        </div>
+      </section>
+
+      <section id="inventoryView" class="view">
+        <form id="catalogForm" class="catalog-form">
+          <div class="form-header">
+            <h2 id="catalogFormTitle">新增耗材卷</h2>
+            <button type="button" id="newCatalogItem" class="ghost">新建</button>
+            <button type="button" id="cloneCatalogItem" class="ghost">克隆</button>
+            <button type="button" id="archiveCatalogItem" class="ghost">归档</button>
+          </div>
+
+          <div class="form-grid catalog-grid">
+            <label>
+              类型
+              <select id="catalogType" name="itemType">
+                <option value="spool">耗材卷</option>
+                <option value="part">零件</option>
+              </select>
+            </label>
+            <label>
+              ID
+              <input id="catalogId" name="id" placeholder="PLA-BLK-002" />
+            </label>
+            <button id="generateCatalogId" type="button" class="ghost">生成 ID</button>
+            <label>
+              名称
+              <input id="catalogName" name="name" placeholder="PLA+ / M3 热熔螺母" />
+            </label>
+
+            <label data-catalog-field="spool">
+              品牌
+              <input name="brand" placeholder="Bambu / eSUN" />
+            </label>
+            <label data-catalog-field="spool">
+              材料
+              <input name="material" placeholder="PLA / PETG / ABS" />
+            </label>
+            <label data-catalog-field="spool">
+              颜色
+              <input name="color" placeholder="黑色" />
+            </label>
+            <label data-catalog-field="spool">
+              空卷重量(g)
+              <input name="empty_wt" inputmode="decimal" placeholder="178" />
+            </label>
+            <label data-catalog-field="spool">
+              当前毛重(g)
+              <input name="current_wt" inputmode="decimal" placeholder="712.4" />
+            </label>
+
+            <label data-catalog-field="part" hidden>
+              单件重量(g)
+              <input name="unit_wt" inputmode="decimal" placeholder="0.27" />
+            </label>
+            <label data-catalog-field="part" hidden>
+              容器重量(g)
+              <input name="container_wt" inputmode="decimal" placeholder="42" />
+            </label>
+            <label data-catalog-field="part" hidden>
+              估算数量
+              <input name="estimated_qty" inputmode="numeric" placeholder="800" />
+            </label>
+
+            <label>
+              库位
+              <input name="location" placeholder="RACK-A01" />
+            </label>
+            <label>
+              报警值
+              <input name="min_alarm" inputmode="decimal" placeholder="100" />
+            </label>
+            <input name="archived_at" type="hidden" />
+            <button id="saveCatalogItem" type="submit">保存物品</button>
+          </div>
+          <div id="catalogMessage" class="form-message">点库存列表里的物品可载入编辑。</div>
+        </form>
+
+        <div class="toolbar">
+          <input id="searchText" placeholder="搜索 ID、名称、材料、颜色、库位" />
+          <select id="inventoryTypeFilter" aria-label="库存类型">
+            <option value="all">全部</option>
+            <option value="spool">耗材卷</option>
+            <option value="part">零件</option>
+          </select>
+          <select id="archiveStatusFilter" aria-label="归档状态">
+            <option value="active">启用</option>
+            <option value="all">全部状态</option>
+            <option value="archived">已归档</option>
+          </select>
+          <label class="inline-toggle">
+            <input id="lowStockOnly" type="checkbox" />
+            低库存
+          </label>
+          <input id="importFile" class="hidden-input" type="file" accept="application/json,.json" />
+          <button id="mergeImportData" type="button" class="ghost">合并导入</button>
+          <button id="replaceImportData" type="button" class="ghost">覆盖导入</button>
+          <button id="exportData" type="button" class="ghost">导出快照</button>
+          <button id="exportFilteredData" type="button" class="ghost">导出当前列表</button>
+        </div>
+        <div id="importPreview" class="import-preview" hidden></div>
+        <div id="inventorySummary" class="list-summary"></div>
+        <div id="inventoryList" class="inventory-list"></div>
+      </section>
+
+      <section id="labelView" class="view">
+        <div class="toolbar">
+          <select id="labelItem"></select>
+          <button id="makeItemQr">生成标签</button>
+        </div>
+        <div class="label-preview">
+          <div id="labelQr" class="qr-box"></div>
+          <div>
+            <h2 id="labelTitle">选择物品</h2>
+            <p id="labelMeta">生成后贴到物品上，库存操作从扫码开始。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="transactionView" class="view">
+        <div id="transactionList" class="inventory-list"></div>
+      </section>
+    </main>
+
+    <template id="itemTemplate">
+      <article class="item-row">
+        <div class="item-main">
+          <div class="item-title"></div>
+          <div class="item-meta"></div>
+        </div>
+        <div class="item-stock"></div>
+      </article>
+    </template>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
