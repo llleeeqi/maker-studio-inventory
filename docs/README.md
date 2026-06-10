@@ -13,3 +13,4 @@
 | [06-inventory-filters.md](./06-inventory-filters.md) | 库存搜索、类型筛选和低库存筛选 |
 | [07-core-shell-boundary.md](./07-core-shell-boundary.md) | 核心和外壳的边界记录，Android 优先时重点看 |
 | [08-first-version-app.md](./08-first-version-app.md) | 第一版正式 app 当前状态、验证方式和已知边界 |
+| [09-operation-button-logic.md](./09-operation-button-logic.md) | 手机 app 操作入口、按钮含义和扫码状态机 |
