@@ -8,6 +8,12 @@ Its main goal is to make everyday actions like identifying items, checking remai
 
 It is not just a QR-code generator. QR codes are the input layer. The real goal is to know what an item is, where it is, how much is left, and record changes with as little friction as possible.
 
+Online QR test tool:
+
+```text
+https://llleeeqi.github.io/maker-studio-inventory/tools/
+```
+
 ## Use Cases
 
 It is designed for:
@@ -109,6 +115,7 @@ flowchart LR
 Near term:
 
 - Replace manual input with Android native scanning.
+- Keep camera, files, permissions, Bluetooth, and other platform concerns in the native Android shell while fixed inventory logic stays in `core/`.
 - Replace localStorage with SQL.js + Capacitor Filesystem.
 - Add WebDAV snapshot sync.
 - Add label templates and BLE printing.

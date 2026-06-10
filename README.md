@@ -8,6 +8,12 @@
 
 项目不是单纯的二维码生成器。二维码只是入口，真正要解决的是：物品在工作室里流动时，用户能用扫码快速知道它是谁、在哪、还剩多少，并把变化记录下来。
 
+在线二维码测试工具：
+
+```text
+https://llleeeqi.github.io/maker-studio-inventory/tools/
+```
+
 ## 用途
 
 适合管理这些东西：
@@ -109,6 +115,7 @@ flowchart LR
 近期：
 
 - Android 原生扫码替换手动输入。
+- Android 壳尽量用原生能力处理相机、文件、权限、蓝牙等平台事项，固定库存逻辑保持在 `core/`。
 - SQL.js + Capacitor Filesystem 替换 localStorage。
 - WebDAV 快照同步。
 - 标签模板和精臣 BLE 打印。

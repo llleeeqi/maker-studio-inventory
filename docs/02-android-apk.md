@@ -18,6 +18,12 @@ Capacitor 的路线适合这个项目：
 - Android 壳只负责平台能力：相机扫码、文件存储、BLE 打印。
 - 不把库存计算写死在 Android 原生层，减少未来迁移成本。
 
+Android 壳的原则：
+
+- 相机扫码、文件读写、权限、通知、BLE、系统分享等平台能力尽量用 Android 原生或 Capacitor 原生插件完成。
+- Android 原生层只把结果转换成稳定 payload、快照文件或状态回调，不复制库存计算、目录规则、筛选规则和合并规则。
+- 固定业务逻辑继续放在 `core/`，Android/Web/Docker 调用同一套核心。
+
 官方资料：
 
 - Capacitor 文档：https://capacitorjs.com/docs
@@ -85,6 +91,8 @@ window.StudioInventoryScanner.push(payload)
 ```
 
 这个入口内部会调用 `core/scanner-port.js` 和 `core/workflow.js`，所以 Android 原生扫码、网页手动输入、测试按钮都共享同一套规则。
+
+Android 原生层负责更稳、更快地完成平台动作；库存判断和数据变更仍由核心完成。
 
 ## 后续需要新增的模块
 
