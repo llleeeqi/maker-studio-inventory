@@ -27,6 +27,12 @@ import {
 let state = loadState();
 let scanSession = createScanSession();
 let scanLog = [];
+let activeScanStream = null;
+let scanFrameRequest = 0;
+let barcodeDetector = null;
+let barcodeDetectorFailed = false;
+let lastCameraPayload = "";
+let lastCameraPayloadAt = 0;
 const scannerPort = createScannerPort(handlePayload, {
   onError: (error) => setResult(error.message),
 });
@@ -45,6 +51,12 @@ const els = {
   pendingLocation: document.querySelector("#pendingLocation"),
   scanResult: document.querySelector("#scanResult"),
   scanLog: document.querySelector("#scanLog"),
+  startCameraScan: document.querySelector("#startCameraScan"),
+  stopCameraScan: document.querySelector("#stopCameraScan"),
+  scannerStatus: document.querySelector("#scannerStatus"),
+  scannerViewport: document.querySelector("#scannerViewport"),
+  scannerVideo: document.querySelector("#scannerVideo"),
+  scannerCanvas: document.querySelector("#scannerCanvas"),
   searchText: document.querySelector("#searchText"),
   inventoryTypeFilter: document.querySelector("#inventoryTypeFilter"),
   archiveStatusFilter: document.querySelector("#archiveStatusFilter"),
@@ -90,7 +102,10 @@ function bindEvents() {
   });
 
   els.modes.forEach((button) => {
-    button.addEventListener("click", () => setScanMode(button.dataset.mode));
+    button.addEventListener("click", () => {
+      setScanMode(button.dataset.mode);
+      if (!activeScanStream) startCameraScan();
+    });
   });
 
   els.resetDemo.addEventListener("click", () => {
@@ -104,6 +119,8 @@ function bindEvents() {
   els.scanText.addEventListener("keydown", (event) => {
     if (event.key === "Enter") consumeScanText();
   });
+  els.startCameraScan.addEventListener("click", startCameraScan);
+  els.stopCameraScan.addEventListener("click", () => stopCameraScan());
 
   document.querySelectorAll("[data-payload]").forEach((button) => {
     button.addEventListener("click", () => scannerPort.push(button.dataset.payload));
@@ -130,6 +147,7 @@ function bindEvents() {
 function switchView(viewId) {
   els.tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.view === viewId));
   els.views.forEach((view) => view.classList.toggle("active", view.id === viewId));
+  if (viewId !== "scanView") stopCameraScan("");
 }
 
 function setScanMode(mode) {
@@ -143,6 +161,133 @@ function consumeScanText() {
   const text = els.scanText.value;
   els.scanText.value = "";
   scannerPort.push(text);
+}
+
+async function startCameraScan() {
+  if (activeScanStream) {
+    setScannerStatus("扫码中：对准二维码。");
+    return;
+  }
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    setScannerStatus("当前环境不支持相机扫码，请使用手动补录。");
+    return;
+  }
+
+  try {
+    setScannerStatus("正在打开相机...");
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+    });
+
+    activeScanStream = stream;
+    els.scannerVideo.srcObject = stream;
+    els.scannerViewport.classList.add("active");
+    els.startCameraScan.disabled = true;
+    els.stopCameraScan.disabled = false;
+    await els.scannerVideo.play();
+    setScannerStatus("扫码中：对准二维码。");
+    scanFrameRequest = requestAnimationFrame(readCameraFrame);
+  } catch (error) {
+    stopCameraScan("");
+    setScannerStatus(formatCameraError(error));
+  }
+}
+
+function stopCameraScan(message = "扫码已停止。") {
+  if (scanFrameRequest) {
+    cancelAnimationFrame(scanFrameRequest);
+    scanFrameRequest = 0;
+  }
+
+  if (activeScanStream) {
+    for (const track of activeScanStream.getTracks()) track.stop();
+    activeScanStream = null;
+  }
+
+  els.scannerVideo.pause();
+  els.scannerVideo.srcObject = null;
+  els.scannerViewport.classList.remove("active");
+  els.startCameraScan.disabled = false;
+  els.stopCameraScan.disabled = true;
+  lastCameraPayload = "";
+  lastCameraPayloadAt = 0;
+  if (message) setScannerStatus(message);
+}
+
+async function readCameraFrame() {
+  if (!activeScanStream) return;
+
+  try {
+    const payload = await decodeCameraFrame();
+    if (payload) acceptCameraPayload(payload);
+  } catch (error) {
+    setScannerStatus(`扫码解析失败：${error.message}`);
+  }
+
+  if (activeScanStream) {
+    scanFrameRequest = requestAnimationFrame(readCameraFrame);
+  }
+}
+
+async function decodeCameraFrame() {
+  const video = els.scannerVideo;
+  if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.videoWidth || !video.videoHeight) {
+    return "";
+  }
+
+  if ("BarcodeDetector" in window && !barcodeDetectorFailed) {
+    try {
+      if (!barcodeDetector) barcodeDetector = new window.BarcodeDetector({ formats: ["qr_code"] });
+      const results = await barcodeDetector.detect(video);
+      const match = results.find((result) => result.rawValue);
+      if (match) return match.rawValue;
+    } catch {
+      barcodeDetectorFailed = true;
+    }
+  }
+
+  return decodeCameraFrameWithJsQr(video);
+}
+
+function decodeCameraFrameWithJsQr(video) {
+  if (typeof window.jsQR !== "function") return "";
+
+  const canvas = els.scannerCanvas;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return "";
+  const scale = Math.min(1, 720 / video.videoWidth);
+  const width = Math.max(1, Math.floor(video.videoWidth * scale));
+  const height = Math.max(1, Math.floor(video.videoHeight * scale));
+
+  if (canvas.width !== width) canvas.width = width;
+  if (canvas.height !== height) canvas.height = height;
+  context.drawImage(video, 0, 0, width, height);
+
+  const imageData = context.getImageData(0, 0, width, height);
+  const code = window.jsQR(imageData.data, width, height, {
+    inversionAttempts: "attemptBoth",
+  });
+  return code?.data || "";
+}
+
+function acceptCameraPayload(payload) {
+  const normalized = String(payload || "").trim();
+  const now = Date.now();
+  if (!normalized || (normalized === lastCameraPayload && now - lastCameraPayloadAt < 1400)) {
+    return;
+  }
+
+  lastCameraPayload = normalized;
+  lastCameraPayloadAt = now;
+  setScannerStatus(`已识别：${normalized}`);
+  navigator.vibrate?.(45);
+  scannerPort.push(normalized);
 }
 
 function handlePayload(text) {
@@ -217,6 +362,13 @@ function renderLabelOptions() {
     option.textContent = `${item.id} · ${item.name}`;
     els.labelItem.append(option);
   }
+
+  if (!els.labelItem.children.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "暂无物品";
+    els.labelItem.append(option);
+  }
 }
 
 function setCatalogForm(form) {
@@ -235,7 +387,7 @@ function setCatalogForm(form) {
 
   els.catalogMessage.textContent = form.id
     ? `正在编辑 ${form.itemType}:${form.id}${form.archived_at ? "（已归档）" : ""}。`
-    : "点库存列表里的物品可载入编辑。";
+    : "新增物品后可在下方生成标签；从库存列表点物品会到这里编辑。";
   els.cloneCatalogItem.disabled = !form.id;
   els.archiveCatalogItem.disabled = !form.id;
   els.archiveCatalogItem.textContent = form.archived_at ? "恢复" : "归档";
@@ -254,6 +406,8 @@ function saveCatalogForm(event) {
     setCatalogForm(formFromItem(result.itemType, result.item));
     els.catalogMessage.textContent = `${result.action === "create" ? "已新增" : "已更新"}：${result.item.id} · ${result.item.name}`;
     renderAll();
+    selectLabelItem(result.itemType, result.item.id);
+    makeItemQr();
   } catch (error) {
     els.catalogMessage.textContent = error.message;
   }
@@ -264,6 +418,7 @@ function loadCatalogItem(itemType, id) {
   if (!entry) return;
   setCatalogForm(formFromItem(itemType, entry.item));
   els.catalogMessage.textContent = `已载入 ${entry.item.id}，修改后点保存。`;
+  switchView("createView");
 }
 
 function cloneCurrentCatalogItem() {
@@ -346,6 +501,13 @@ function renderScanLog() {
 
 function makeItemQr() {
   const payload = els.labelItem.value;
+  if (!payload) {
+    els.labelQr.innerHTML = "";
+    els.labelTitle.textContent = "选择物品";
+    els.labelMeta.textContent = "先新增物品，再生成标签。";
+    return;
+  }
+
   const [itemType, id] = payload.split(":");
   const entry = listItems(state).find((candidate) => candidate.itemType === itemType && candidate.item.id === id);
   if (!entry) return;
@@ -469,6 +631,27 @@ function addScanLog(payload) {
 
 function setResult(text) {
   els.scanResult.textContent = text;
+}
+
+function setScannerStatus(text) {
+  els.scannerStatus.textContent = text;
+}
+
+function formatCameraError(error) {
+  if (error?.name === "NotAllowedError") {
+    return "相机权限被拒绝，请在系统权限里允许本应用使用相机。";
+  }
+  if (error?.name === "NotFoundError") {
+    return "没有找到可用相机。";
+  }
+  if (error?.name === "NotReadableError") {
+    return "相机被其他应用占用，请关闭后重试。";
+  }
+  return `无法打开相机：${error?.message || "未知错误"}`;
+}
+
+function selectLabelItem(itemType, id) {
+  els.labelItem.value = `${itemType}:${id}`;
 }
 
 function escapeHtml(value) {

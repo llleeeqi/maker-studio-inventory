@@ -357,6 +357,106 @@ main {
   overflow-wrap: anywhere;
 }
 
+.camera-scanner {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 14px;
+}
+
+.scanner-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.scanner-head strong {
+  display: block;
+  font-size: 18px;
+}
+
+.scanner-head span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.scanner-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.scanner-viewport {
+  position: relative;
+  min-height: 220px;
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #111;
+}
+
+.scanner-viewport::before {
+  content: "点击开始扫码";
+  color: #d1d5db;
+  font-weight: 700;
+}
+
+.scanner-viewport.active::before {
+  content: "";
+}
+
+.scanner-viewport video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  opacity: 0;
+}
+
+.scanner-viewport.active video {
+  opacity: 1;
+}
+
+.scanner-frame {
+  position: absolute;
+  width: min(68%, 280px);
+  aspect-ratio: 1;
+  display: none;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  border-radius: 8px;
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.22);
+}
+
+.scanner-viewport.active .scanner-frame {
+  display: block;
+}
+
+.manual-scan {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 14px;
+}
+
+.manual-scan summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.manual-scan .scan-input {
+  margin-top: 12px;
+}
+
 .scan-input,
 .toolbar,
 .form-grid {
@@ -398,6 +498,7 @@ main {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 8px;
+  margin-top: 12px;
 }
 
 .quick-payloads button {
@@ -620,6 +721,17 @@ code {
   .mode-row,
   .status-strip {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .scanner-head,
+  .scanner-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
+  .scanner-viewport {
+    min-height: 260px;
   }
 
   .status-strip strong {

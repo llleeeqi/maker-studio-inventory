@@ -3,7 +3,7 @@ import { findItem, getStockInfo, parsePayload, updateByWeight, updateLocation } 
 export const SCAN_MODES = {
   lookup: {
     label: "查库存",
-    hint: "扫物品码后立即显示库存和库位。",
+    hint: "扫物品码后自动搜索库存。",
   },
   stocktake: {
     label: "盘点称重",
