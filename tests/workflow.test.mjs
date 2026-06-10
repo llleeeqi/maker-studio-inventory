@@ -4,6 +4,7 @@ import { createDemoState, getStockInfo } from "../core/inventory.js";
 import { applyScanPayload, createScanSession, setSessionMode } from "../core/workflow.js";
 
 testLookup();
+testWeightAutoSwitchesToStocktake();
 testStocktakeAnyOrder();
 testMoveAnyOrder();
 testUnknownItemDoesNotComplete();
@@ -19,6 +20,21 @@ function testLookup() {
   assert.match(result.message, /PLA-BLK-001/);
   assert.match(result.message, /RACK-A01/);
   assert.equal(state.transactions.length, 0);
+}
+
+function testWeightAutoSwitchesToStocktake() {
+  const state = createDemoState();
+  const session = createScanSession("lookup");
+  const weightResult = applyScanPayload(state, session, "weight:700");
+
+  assert.equal(weightResult.changed, false);
+  assert.equal(session.mode, "stocktake");
+  assert.match(weightResult.message, /已切到盘点称重/);
+
+  const itemResult = applyScanPayload(state, session, "spool:PLA-BLK-001");
+
+  assert.equal(itemResult.changed, true);
+  assert.equal(getStockInfo("spool", state.spools[0]).text, "522g");
 }
 
 function testStocktakeAnyOrder() {

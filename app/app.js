@@ -33,6 +33,8 @@ let barcodeDetector = null;
 let barcodeDetectorFailed = false;
 let lastCameraPayload = "";
 let lastCameraPayloadAt = 0;
+let torchEnabled = false;
+let scanAudioContext = null;
 const scannerPort = createScannerPort(handlePayload, {
   onError: (error) => setResult(error.message),
 });
@@ -57,6 +59,7 @@ const els = {
   scannerViewport: document.querySelector("#scannerViewport"),
   scannerVideo: document.querySelector("#scannerVideo"),
   scannerCanvas: document.querySelector("#scannerCanvas"),
+  toggleTorch: document.querySelector("#toggleTorch"),
   searchText: document.querySelector("#searchText"),
   inventoryTypeFilter: document.querySelector("#inventoryTypeFilter"),
   archiveStatusFilter: document.querySelector("#archiveStatusFilter"),
@@ -121,9 +124,13 @@ function bindEvents() {
   });
   els.startCameraScan.addEventListener("click", startCameraScan);
   els.stopCameraScan.addEventListener("click", () => stopCameraScan());
+  els.toggleTorch.addEventListener("click", toggleTorch);
 
   document.querySelectorAll("[data-payload]").forEach((button) => {
-    button.addEventListener("click", () => scannerPort.push(button.dataset.payload));
+    button.addEventListener("click", () => {
+      primeScanAudio();
+      scannerPort.push(button.dataset.payload);
+    });
   });
 
   els.searchText.addEventListener("input", renderInventory);
@@ -151,19 +158,22 @@ function switchView(viewId) {
 }
 
 function setScanMode(mode) {
+  primeScanAudio();
   const result = setSessionMode(scanSession, mode);
-  els.modes.forEach((button) => button.classList.toggle("active", button.dataset.mode === mode));
   renderScanState();
   setResult(result.message);
 }
 
 function consumeScanText() {
+  primeScanAudio();
   const text = els.scanText.value;
   els.scanText.value = "";
   scannerPort.push(text);
 }
 
 async function startCameraScan() {
+  primeScanAudio();
+
   if (activeScanStream) {
     setScannerStatus("扫码中：对准二维码。");
     return;
@@ -191,6 +201,7 @@ async function startCameraScan() {
     els.startCameraScan.disabled = true;
     els.stopCameraScan.disabled = false;
     await els.scannerVideo.play();
+    updateTorchControl();
     setScannerStatus("扫码中：对准二维码。");
     scanFrameRequest = requestAnimationFrame(readCameraFrame);
   } catch (error) {
@@ -215,9 +226,28 @@ function stopCameraScan(message = "扫码已停止。") {
   els.scannerViewport.classList.remove("active");
   els.startCameraScan.disabled = false;
   els.stopCameraScan.disabled = true;
+  torchEnabled = false;
+  updateTorchControl();
   lastCameraPayload = "";
   lastCameraPayloadAt = 0;
   if (message) setScannerStatus(message);
+}
+
+async function toggleTorch() {
+  const track = getCameraTrack();
+  if (!track) return;
+
+  try {
+    torchEnabled = !torchEnabled;
+    await track.applyConstraints({
+      advanced: [{ torch: torchEnabled }],
+    });
+    updateTorchControl();
+  } catch {
+    torchEnabled = false;
+    updateTorchControl(false);
+    setScannerStatus("当前相机不支持手电筒。");
+  }
 }
 
 async function readCameraFrame() {
@@ -286,7 +316,6 @@ function acceptCameraPayload(payload) {
   lastCameraPayload = normalized;
   lastCameraPayloadAt = now;
   setScannerStatus(`已识别：${normalized}`);
-  navigator.vibrate?.(45);
   scannerPort.push(normalized);
 }
 
@@ -298,6 +327,7 @@ function handlePayload(text) {
     if (result.changed) saveState(state);
     renderScanState();
     if (result.changed) renderAll();
+    playScanFeedback();
   } catch (error) {
     setResult(error.message);
   }
@@ -312,6 +342,7 @@ function renderAll() {
 }
 
 function renderScanState() {
+  els.modes.forEach((button) => button.classList.toggle("active", button.dataset.mode === scanSession.mode));
   els.scanModeLabel.textContent = SCAN_MODES[scanSession.mode].label;
   els.pendingWeight.textContent = scanSession.pendingWeight == null ? "未扫描" : `${scanSession.pendingWeight}g`;
   els.pendingItem.textContent = scanSession.pendingItem == null ? "未扫描" : `${scanSession.pendingItem.itemType}:${scanSession.pendingItem.id}`;
@@ -635,6 +666,66 @@ function setResult(text) {
 
 function setScannerStatus(text) {
   els.scannerStatus.textContent = text;
+}
+
+function getCameraTrack() {
+  return activeScanStream?.getVideoTracks?.()[0] || null;
+}
+
+function updateTorchControl(supported = getTorchSupport()) {
+  els.toggleTorch.hidden = !activeScanStream;
+  els.toggleTorch.disabled = !activeScanStream || !supported;
+  els.toggleTorch.textContent = supported
+    ? `${torchEnabled ? "关闭" : "打开"}手电筒`
+    : "手电筒不可用";
+}
+
+function getTorchSupport() {
+  const track = getCameraTrack();
+  const capabilities = track?.getCapabilities?.();
+  return Boolean(capabilities?.torch && track?.applyConstraints);
+}
+
+function primeScanAudio() {
+  const context = getScanAudioContext();
+  if (context?.state === "suspended") {
+    context.resume().catch(() => {});
+  }
+}
+
+function playScanFeedback() {
+  navigator.vibrate?.([45, 30, 45]);
+  playScanBeep();
+}
+
+function playScanBeep() {
+  const context = getScanAudioContext();
+  if (!context) return;
+
+  if (context.state === "suspended") {
+    context.resume().catch(() => {});
+  }
+
+  const start = context.currentTime;
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  oscillator.type = "sine";
+  oscillator.frequency.setValueAtTime(880, start);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(0.18, start + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.13);
+  oscillator.connect(gain);
+  gain.connect(context.destination);
+  oscillator.start(start);
+  oscillator.stop(start + 0.14);
+}
+
+function getScanAudioContext() {
+  if (scanAudioContext) return scanAudioContext;
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return null;
+  scanAudioContext = new AudioContext();
+  return scanAudioContext;
 }
 
 function formatCameraError(error) {

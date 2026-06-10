@@ -53,7 +53,8 @@ export function applyScanPayload(state, session, rawText) {
   };
 
   if (payload.type === "weight") {
-    response.message = applyWeight(session, payload);
+    const autoSwitched = session.mode !== "stocktake";
+    response.message = applyWeight(session, payload, autoSwitched);
   } else if (payload.type === "spool" || payload.type === "part") {
     response.message = applyItem(state, session, payload);
   } else if (payload.type === "location") {
@@ -71,15 +72,16 @@ export function applyScanPayload(state, session, rawText) {
   return response;
 }
 
-function applyWeight(session, payload) {
+function applyWeight(session, payload, autoSwitched = false) {
   const weight = Number(payload.value);
   if (!Number.isFinite(weight) || weight <= 0) {
     return `重量格式错误：${payload.raw}`;
   }
 
+  if (autoSwitched) session.mode = "stocktake";
   session.pendingWeight = weight;
-  const next = session.mode === "stocktake" ? "继续扫物品码。" : "切到盘点称重后可用于更新库存。";
-  return `收到重量：${weight}g。${next}`;
+  const prefix = autoSwitched ? "已切到盘点称重。" : "";
+  return `${prefix}收到重量：${weight}g。继续扫物品码。`;
 }
 
 function applyItem(state, session, payload) {

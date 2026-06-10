@@ -310,7 +310,7 @@ main {
 
 .mode-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 
@@ -429,12 +429,17 @@ main {
 
 .scanner-frame {
   position: absolute;
-  width: min(68%, 280px);
+  top: 50%;
+  left: 50%;
+  width: min(62%, 240px);
+  max-width: calc(100% - 48px);
+  max-height: calc(100% - 48px);
   aspect-ratio: 1;
   display: none;
   border: 2px solid rgba(255, 255, 255, 0.92);
   border-radius: 8px;
   box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.22);
+  transform: translate(-50%, -50%);
 }
 
 .scanner-viewport.active .scanner-frame {
@@ -455,6 +460,10 @@ main {
 
 .manual-scan .scan-input {
   margin-top: 12px;
+}
+
+.torch-button {
+  width: 100%;
 }
 
 .scan-input,

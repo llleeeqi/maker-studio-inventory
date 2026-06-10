@@ -26,7 +26,6 @@
       <section id="scanView" class="view active">
         <div class="scan-panel">
           <div class="mode-row" aria-label="扫码操作">
-            <button class="mode active" data-mode="lookup">查库存</button>
             <button class="mode" data-mode="stocktake">盘点称重</button>
             <button class="mode" data-mode="move">绑定库位</button>
           </div>
@@ -66,6 +65,7 @@
               <canvas id="scannerCanvas" hidden></canvas>
               <div class="scanner-frame" aria-hidden="true"></div>
             </div>
+            <button id="toggleTorch" type="button" class="ghost torch-button" hidden disabled>打开手电筒</button>
           </div>
 
           <details class="manual-scan">
@@ -84,7 +84,7 @@
             </div>
           </details>
 
-          <div id="scanResult" class="result">查库存：扫物品码后自动搜索库存。</div>
+          <div id="scanResult" class="result">扫物品码自动查库存；扫重量码自动进入盘点称重。</div>
           <div id="scanLog" class="scan-log"></div>
         </div>
       </section>
