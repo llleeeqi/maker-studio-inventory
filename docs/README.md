@@ -14,3 +14,4 @@
 | [07-core-shell-boundary.md](./07-core-shell-boundary.md) | 核心和外壳的边界记录，Android 优先时重点看 |
 | [08-first-version-app.md](./08-first-version-app.md) | 第一版正式 app 当前状态、验证方式和已知边界 |
 | [09-operation-button-logic.md](./09-operation-button-logic.md) | 手机 app 操作入口、按钮含义和扫码状态机 |
+| [10-scan-workbench-redesign.md](./10-scan-workbench-redesign.md) | 扫码台重设计：推翻模式按钮，按扫码事件和当前上下文驱动 |
