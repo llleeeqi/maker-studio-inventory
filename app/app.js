@@ -67,7 +67,6 @@ const els = {
   inventorySummary: document.querySelector("#inventorySummary"),
   inventoryList: document.querySelector("#inventoryList"),
   exportData: document.querySelector("#exportData"),
-  exportFilteredData: document.querySelector("#exportFilteredData"),
   mergeImportData: document.querySelector("#mergeImportData"),
   replaceImportData: document.querySelector("#replaceImportData"),
   importFile: document.querySelector("#importFile"),
@@ -138,7 +137,6 @@ function bindEvents() {
   els.archiveStatusFilter.addEventListener("change", renderInventory);
   els.lowStockOnly.addEventListener("change", renderInventory);
   els.exportData.addEventListener("click", exportData);
-  els.exportFilteredData.addEventListener("click", exportFilteredData);
   els.mergeImportData.addEventListener("click", () => chooseImportFile("merge"));
   els.replaceImportData.addEventListener("click", () => chooseImportFile("replace"));
   els.importFile.addEventListener("change", importData);
@@ -552,17 +550,6 @@ function exportData() {
   downloadSnapshot(state, makeSnapshotFilename());
 }
 
-function exportFilteredData() {
-  const entries = getFilteredEntries();
-  const ids = new Set(entries.map((entry) => `${entry.itemType}:${entry.item.id}`));
-  const filteredState = {
-    spools: entries.filter((entry) => entry.itemType === "spool").map((entry) => entry.item),
-    parts: entries.filter((entry) => entry.itemType === "part").map((entry) => entry.item),
-    transactions: state.transactions.filter((transaction) => ids.has(`${transaction.item_type}:${transaction.item_id}`)),
-  };
-  downloadSnapshot(filteredState, makeSnapshotFilename(new Date()).replace(".json", "-filtered.json"));
-}
-
 function downloadSnapshot(snapshotState, filename) {
   const blob = new Blob([exportSnapshot(snapshotState)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -607,15 +594,6 @@ async function importData(event) {
   } finally {
     event.target.value = "";
   }
-}
-
-function getFilteredEntries() {
-  return filterInventory(listItems(state), {
-    query: els.searchText.value,
-    itemType: els.inventoryTypeFilter.value,
-    lowOnly: els.lowStockOnly.checked,
-    archiveStatus: els.archiveStatusFilter.value,
-  });
 }
 
 function showImportPreview(lines) {

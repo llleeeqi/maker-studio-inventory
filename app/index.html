@@ -90,6 +90,15 @@
       </section>
 
       <section id="inventoryView" class="view">
+        <div class="sync-panel">
+          <div>
+            <span class="label">数据保存</span>
+            <strong>本地自动保存</strong>
+            <p>云同步未接入；快照只作为备份和调试入口。</p>
+          </div>
+          <button type="button" class="ghost" disabled>云同步未接入</button>
+        </div>
+
         <div class="toolbar">
           <input id="searchText" placeholder="搜索 ID、名称、材料、颜色、库位" />
           <select id="inventoryTypeFilter" aria-label="库存类型">
@@ -106,13 +115,19 @@
             <input id="lowStockOnly" type="checkbox" />
             低库存
           </label>
-          <input id="importFile" class="hidden-input" type="file" accept="application/json,.json" />
-          <button id="mergeImportData" type="button" class="ghost">合并导入</button>
-          <button id="replaceImportData" type="button" class="ghost">覆盖导入</button>
-          <button id="exportData" type="button" class="ghost">导出快照</button>
-          <button id="exportFilteredData" type="button" class="ghost">导出当前列表</button>
         </div>
-        <div id="importPreview" class="import-preview" hidden></div>
+
+        <details class="backup-tools">
+          <summary>备份和调试</summary>
+          <div class="toolbar">
+            <button id="mergeImportData" type="button" class="ghost">合并导入快照</button>
+            <button id="replaceImportData" type="button" class="ghost">覆盖恢复快照</button>
+            <button id="exportData" type="button" class="ghost">导出本地备份</button>
+          </div>
+          <input id="importFile" class="hidden-input" type="file" accept="application/json,.json" />
+          <div id="importPreview" class="import-preview" hidden></div>
+        </details>
+
         <div id="inventorySummary" class="list-summary"></div>
         <div id="inventoryList" class="inventory-list"></div>
       </section>
