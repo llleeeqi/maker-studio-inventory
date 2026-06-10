@@ -19,7 +19,7 @@
       <section class="tool-hero">
         <div>
           <h2>测试工作台</h2>
-          <p>选类型、填字段、直接生成二维码。不会写协议也能自己造测试数据。</p>
+          <p>选类型、填字段、直接生成二维码；也可以按场景套码测试新版扫码台。</p>
         </div>
         <div class="tool-protocol">
           <strong>支持的 payload</strong>
@@ -28,6 +28,7 @@
           <code>part:&lt;id&gt;</code>
           <code>location:&lt;code&gt;</code>
           <code>raw:&lt;custom&gt;</code>
+          <span class="tool-hint">出库、重新入库是 app 动作，不新增二维码前缀。</span>
         </div>
       </section>
 
@@ -163,6 +164,14 @@
           </div>
           <div id="copyStatus" class="tool-hint">复制后可直接贴到扫码测试里。</div>
         </section>
+      </section>
+
+      <section class="tool-panel">
+        <div class="tool-section-head">
+          <h2>扫码台场景套码</h2>
+          <p class="tool-subtitle">按顺序扫，测试新版扫码台的自动判断逻辑。</p>
+        </div>
+        <div id="scenarioGrid" class="scenario-grid"></div>
       </section>
 
       <section class="tool-panel">

@@ -308,6 +308,102 @@ main {
   height: 160px;
 }
 
+.scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.scenario-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfbfb;
+  padding: 12px;
+}
+
+.scenario-head {
+  display: grid;
+  gap: 4px;
+}
+
+.scenario-head strong {
+  font-size: 15px;
+}
+
+.scenario-head span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.scenario-steps {
+  display: grid;
+  gap: 10px;
+}
+
+.scenario-step {
+  display: grid;
+  grid-template-columns: auto 92px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid #eef1f2;
+  padding-top: 10px;
+}
+
+.scenario-index {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #e7f4f2;
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.scenario-step strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.scenario-step code {
+  display: block;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.scenario-step-qr {
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+}
+
+.scenario-step-qr svg {
+  width: 88px;
+  height: 88px;
+  display: block;
+}
+
+.app-action-step {
+  grid-template-columns: auto minmax(0, 1fr);
+  border: 1px dashed #b9ded8;
+  border-radius: 8px;
+  background: #f1faf8;
+  padding: 10px;
+}
+
+.app-action-step p {
+  margin: 0;
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .mode-row {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -717,8 +813,23 @@ code {
   .tool-hero,
   .tool-layout,
   .tool-field-grid,
-  .sample-grid {
+  .sample-grid,
+  .scenario-grid {
     grid-template-columns: 1fr;
+  }
+
+  .scenario-step {
+    grid-template-columns: auto 84px minmax(0, 1fr);
+  }
+
+  .scenario-step-qr {
+    width: 84px;
+    height: 84px;
+  }
+
+  .scenario-step-qr svg {
+    width: 80px;
+    height: 80px;
   }
 
   .quick-payloads,

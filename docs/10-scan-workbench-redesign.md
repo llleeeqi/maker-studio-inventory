@@ -297,3 +297,32 @@ updated_at = now
 4. 库存页扫码按钮复用同一个扫码台。
 5. 增加出库、重新入库、撤销上一步。
 6. 发布新版 APK。
+
+## 二维码测试工具要求
+
+测试工具不需要新增 payload 前缀。它应该继续生成：
+
+```text
+spool:<id>
+part:<id>
+weight:<g>
+location:<code>
+raw:<custom>
+```
+
+但必须提供“扫码台场景套码”，覆盖这些顺序：
+
+| 场景 | 顺序 |
+|---|---|
+| 查耗材详情 | `spool:<id>` |
+| 查零件详情 | `part:<id>` |
+| 先称重再扫物品 | `weight:<g>` -> `spool:<id>` |
+| 先物品再称重 | `spool:<id>` -> `weight:<g>` |
+| 先库位再扫物品 | `location:<code>` -> `spool:<id>` |
+| 先物品再移库 | `part:<id>` -> `location:<code>` |
+| 出库当前卷 | `spool:<id>` -> app 里点“出库当前卷” |
+| 出库卷重新入库 | `spool:<id>` -> `weight:<g>` |
+| 先重量后重新入库 | `weight:<g>` -> `spool:<id>` |
+| 同类耗材卷数 | 多个同类 `spool:<id>` |
+
+出库和重新入库是 app 行为，不应该设计成新的二维码协议。

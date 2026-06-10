@@ -83,12 +83,93 @@ const SAMPLE_LIBRARY = {
 };
 
 const TYPE_HINTS = {
-  weight: "生成 `weight:<grams>`。只填克数，适合称重二维码。",
-  spool: "生成 `spool:<id>`。可直接填现成 ID，也可用材料、颜色、序号拼一个测试 ID。",
-  part: "生成 `part:<id>`。可直接填现成零件 ID，也可根据名称和规格临时造一个测试 ID。",
-  location: "生成 `location:<code>`。可直接填库位，也可按区域、排号、位号拼接。",
-  raw: "不做前缀拼接，直接把你输入的内容拿去生成二维码。",
+  weight: "生成 `weight:<grams>`。新版扫码台会按当前物品或待处理物品自动判断盘点/重新入库。",
+  spool: "生成 `spool:<id>`。扫物品码默认展示详情；遇到待处理重量或库位时自动写入。",
+  part: "生成 `part:<id>`。扫零件码默认展示详情；遇到重量码时可估算数量。",
+  location: "生成 `location:<code>`。有当前物品就绑定库位，没有当前物品就等待物品码。",
+  raw: "不做前缀拼接，直接把你输入的内容拿去生成二维码，用于未知码和兼容性测试。",
 };
+
+const WORKBENCH_SCENARIOS = [
+  {
+    title: "查耗材详情",
+    goal: "扫物品码后展示库存、库位、入库时间和同类卷数。",
+    steps: [
+      { label: "扫耗材卷", payload: "spool:PLA-BLK-001" },
+    ],
+  },
+  {
+    title: "查零件详情",
+    goal: "扫零件码后展示数量、库位和报警值。",
+    steps: [
+      { label: "扫零件", payload: "part:M3-INSERT" },
+    ],
+  },
+  {
+    title: "先称重再扫物品",
+    goal: "先扫重量，扫码台进入待处理重量；再扫物品后写入库存。",
+    steps: [
+      { label: "扫重量", payload: "weight:700.0" },
+      { label: "扫耗材卷", payload: "spool:PLA-BLK-001" },
+    ],
+  },
+  {
+    title: "先物品再称重",
+    goal: "先设当前物品，再扫重量直接更新当前物品。",
+    steps: [
+      { label: "扫耗材卷", payload: "spool:PETG-CLR-001" },
+      { label: "扫重量", payload: "weight:388.5" },
+    ],
+  },
+  {
+    title: "先库位再扫物品",
+    goal: "先扫库位，扫码台等待物品；再扫物品后绑定库位。",
+    steps: [
+      { label: "扫库位", payload: "location:RACK-C04" },
+      { label: "扫耗材卷", payload: "spool:PLA-BLK-001" },
+    ],
+  },
+  {
+    title: "先物品再移库",
+    goal: "当前物品存在时，扫库位码直接绑定新库位。",
+    steps: [
+      { label: "扫零件", payload: "part:M3-INSERT" },
+      { label: "扫库位", payload: "location:BOX-D08" },
+    ],
+  },
+  {
+    title: "出库当前卷",
+    goal: "出库是 app 按钮动作，不是新二维码。先扫卷，再在详情卡点出库。",
+    steps: [
+      { label: "扫耗材卷", payload: "spool:PLA-BLK-001" },
+      { label: "app 动作", action: "点“出库当前卷”" },
+    ],
+  },
+  {
+    title: "出库卷重新入库",
+    goal: "已出库卷再次扫码后，必须补重量；重量和物品顺序都应支持。",
+    steps: [
+      { label: "扫已出库卷", payload: "spool:PLA-BLK-001" },
+      { label: "扫新重量", payload: "weight:690.0" },
+    ],
+  },
+  {
+    title: "先重量后重新入库",
+    goal: "先扫重量，再扫已出库卷，也应按重新入库处理。",
+    steps: [
+      { label: "扫新重量", payload: "weight:702.5" },
+      { label: "扫已出库卷", payload: "spool:PLA-BLK-001" },
+    ],
+  },
+  {
+    title: "同类耗材卷数",
+    goal: "用于测同类卷数。若 app 里还没有 002，先在新增页克隆/新增同类卷。",
+    steps: [
+      { label: "扫第一卷", payload: "spool:PLA-BLK-001" },
+      { label: "扫同类第二卷", payload: "spool:PLA-BLK-002" },
+    ],
+  },
+];
 
 const els = {
   qrType: document.querySelector("#qrType"),
@@ -101,6 +182,7 @@ const els = {
   copyStatus: document.querySelector("#copyStatus"),
   fieldHint: document.querySelector("#fieldHint"),
   sampleGrid: document.querySelector("#sampleGrid"),
+  scenarioGrid: document.querySelector("#scenarioGrid"),
   typeButtons: document.querySelectorAll("[data-type-select]"),
   sampleButtons: document.querySelectorAll("[data-sample]"),
   fieldGroups: {
@@ -127,6 +209,7 @@ const els = {
 
 bindEvents();
 applyRandomValues("weight");
+renderWorkbenchScenarios();
 renderAllSamples();
 updateTypeUi();
 makeQr();
@@ -308,6 +391,49 @@ function renderAllSamples() {
       `,
     )
     .join("");
+}
+
+function renderWorkbenchScenarios() {
+  els.scenarioGrid.innerHTML = WORKBENCH_SCENARIOS
+    .map(
+      (scenario) => `
+        <article class="scenario-card">
+          <div class="scenario-head">
+            <strong>${escapeHtml(scenario.title)}</strong>
+            <span>${escapeHtml(scenario.goal)}</span>
+          </div>
+          <div class="scenario-steps">
+            ${scenario.steps.map((step, index) => renderScenarioStep(step, index)).join("")}
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderScenarioStep(step, index) {
+  if (step.action) {
+    return `
+      <div class="scenario-step app-action-step">
+        <span class="scenario-index">${index + 1}</span>
+        <div>
+          <strong>${escapeHtml(step.label)}</strong>
+          <p>${escapeHtml(step.action)}</p>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="scenario-step">
+      <span class="scenario-index">${index + 1}</span>
+      <div class="scenario-step-qr">${renderQrSvg(step.payload, 4, 2)}</div>
+      <div>
+        <strong>${escapeHtml(step.label)}</strong>
+        <code>${escapeHtml(step.payload)}</code>
+      </div>
+    </div>
+  `;
 }
 
 async function copyPayload() {
