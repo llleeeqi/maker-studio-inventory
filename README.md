@@ -59,11 +59,9 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 
 当前可安装 Flutter APK：
 
-```text
-studio-inventory-flutter-0.2.0-arm64-release.apk
-```
+[studio-inventory-flutter-0.2.0-arm64-release.apk](./studio-inventory-flutter-0.2.0-arm64-release.apk)
 
-这个包使用 Flutter / Dart / Material 3 编写，Android 原生构建链路输出，包名为 `studio.inventory.mobile`，版本为 `0.2.0`。当前分发包是 arm64 release APK；debug APK 只用于本地调试。
+这个包使用 Flutter / Dart / Material 3 编写，Android 原生构建链路输出，包名为 `studio.inventory.mobile`，版本为 `0.2.0`。当前分发包是 arm64 release APK；debug APK 只用于本地调试。SHA-256：`3402066d6ce88958a955a8dc3a245f7e1088cc5c7a49e3573d0bd2fcef04e292`。
 
 长期推荐扫码协议：
 
