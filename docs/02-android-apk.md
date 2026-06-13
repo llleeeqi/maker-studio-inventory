@@ -2,13 +2,26 @@
 
 ## 结论
 
-已经可以做成本地 Android APK。当前仓库已接入 Capacitor，并生成了可安装的 debug APK：
+已经可以做成本地 Android APK。当前有两条 Android 路线：
+
+- `mobile_flutter/`：Flutter / Dart / Material 3 手机 app，当前手机主线。
+- `android/`：Capacitor WebView 壳，保留为 Web 核心打包路线和历史对照。
+
+当前 Flutter 可安装 release APK：
+
+```text
+studio-inventory-flutter-0.2.0-arm64-release.apk
+```
+
+早期 Capacitor debug APK：
 
 ```text
 studio-inventory-debug.apk
 ```
 
 这里说的“网页核心”不是让用户打开一个外网网页，而是把 HTML/JS/CSS 打包进 Android App。运行时是本机 app，UI 用 WebView 承载，扫码、文件、蓝牙走 Android 原生插件。
+
+Flutter 路线则不是 WebView 套壳，而是 Flutter Material 3 UI 加 Android 原生构建链路。高频手机交互优先放在 Flutter app 里推进。当前 0.2.0 分发包是 arm64 release APK，debug APK 不作为外发包。
 
 ## 为什么用 Capacitor
 
@@ -140,6 +153,6 @@ studio-inventory-debug.apk
 
 ## 当前 APK 边界
 
-- 这是 debug APK，不是上架用 release 包。
-- 扫码仍是页面内手动输入、测试按钮或外部 JS bridge；原生相机扫码还未接。
+- Capacitor APK 仍是 debug APK，不是上架用 release 包。
+- Flutter APK 已有原生相机扫码、手电筒、震动和提示音；Capacitor 路线仍是页面内手动输入、测试按钮或外部 JS bridge。
 - 存储仍是 WebView localStorage；SQL.js + Capacitor Filesystem 还未接。

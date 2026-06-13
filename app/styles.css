@@ -130,7 +130,7 @@ input[type="checkbox"] {
 main {
   width: min(980px, 100%);
   margin: 0 auto;
-  padding: 16px;
+  padding: 12px;
 }
 
 .view {
@@ -144,7 +144,7 @@ main {
 .scan-panel,
 .qr-generator {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .tool-hero,
@@ -425,7 +425,7 @@ main {
 .status-strip {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  gap: 8px;
 }
 
 .status-strip > div,
@@ -437,7 +437,7 @@ main {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
-  padding: 14px;
+  padding: 10px;
 }
 
 .label {
@@ -448,18 +448,18 @@ main {
 }
 
 .status-strip strong {
-  font-size: 24px;
+  font-size: 18px;
   line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
 .camera-scanner {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
-  padding: 14px;
+  padding: 10px;
 }
 
 .scanner-head {
@@ -471,7 +471,7 @@ main {
 
 .scanner-head strong {
   display: block;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .scanner-head span {
@@ -492,8 +492,8 @@ main {
 
 .scanner-viewport {
   position: relative;
-  min-height: 220px;
-  aspect-ratio: 4 / 3;
+  height: clamp(150px, 30vh, 220px);
+  min-height: 0;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -527,9 +527,9 @@ main {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(62%, 240px);
-  max-width: calc(100% - 48px);
-  max-height: calc(100% - 48px);
+  width: min(44%, 150px);
+  max-width: calc(100% - 32px);
+  max-height: calc(100% - 32px);
   aspect-ratio: 1;
   display: none;
   border: 2px solid rgba(255, 255, 255, 0.92);
@@ -546,7 +546,7 @@ main {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
-  padding: 14px;
+  padding: 10px;
 }
 
 .manual-scan summary {
@@ -560,6 +560,27 @@ main {
 
 .torch-button {
   width: 100%;
+}
+
+.catalog-scan-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #b9ded8;
+  border-radius: 8px;
+  background: #f7fbfa;
+  padding: 10px;
+}
+
+.catalog-scan-panel[hidden] {
+  display: none;
+}
+
+.scanner-viewport.compact {
+  height: clamp(112px, 20vh, 150px);
+}
+
+.compact-input {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .scan-input,
@@ -656,14 +677,16 @@ main {
 }
 
 .result {
-  min-height: 68px;
-  font-size: 18px;
-  line-height: 1.5;
+  min-height: 52px;
+  font-size: 15px;
+  line-height: 1.45;
 }
 
 .scan-log {
   display: grid;
   gap: 8px;
+  max-height: 86px;
+  overflow: auto;
   color: var(--muted);
   font-size: 13px;
 }
@@ -708,11 +731,13 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .form-header h2 {
   margin: 0;
   font-size: 18px;
+  margin-right: auto;
 }
 
 .catalog-grid {

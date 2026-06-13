@@ -39,11 +39,37 @@ localStorage JSON
 
 缺点：不适合长期保存，不适合大数据量，不适合文件级同步。
 
-### Android APK
+### 0.2 手机 app
+
+0.2 先用 JSON 快照持久化，不急着上 SQLite。目标是先把手机扫码录入闭环跑顺。
+
+推荐快照结构：
+
+```json
+{
+  "schema": 2,
+  "device_id": "phone-a",
+  "profiles": {},
+  "states": {},
+  "transactions": []
+}
+```
+
+字段边界：
+
+| 字段 | 作用 |
+|---|---|
+| `profiles` | 固定档案，来自 `msi:v1` 二维码或新增表单 |
+| `states` | 当前库存状态，只有真正入库后才出现 |
+| `transactions` | 关键动作流水，带 `device_id` 和含时区的 `created_at` |
+
+详见 [12-msi-v1-and-0.2-scope.md](./12-msi-v1-and-0.2-scope.md)。
+
+### Android 后续
 
 ```text
-SQL.js SQLite 数据库
-Capacitor Filesystem 保存 db 文件或快照
+SQLite / 文件数据库
+Android 本地文件保存 db 文件或快照
 ```
 
 优点：离线稳定，数据库可导出。
@@ -51,23 +77,24 @@ Capacitor Filesystem 保存 db 文件或快照
 ### WebDAV 同步
 
 ```text
-本地 SQLite/JSON 快照
+本地 JSON / SQLite 快照
   ↓
-core/snapshot.js 导出 snapshot
+导出 snapshot
   ↓
 PUT 到 WebDAV
   ↓
 GET 远程 snapshot
   ↓
-core/snapshot.js 校验格式
+校验格式
   ↓
-core/merge.js 按 updated_at 合并
+合并 profiles / states / transactions
 ```
 
 单用户优先，冲突规则先保持简单：
 
 ```text
-同一条记录，updated_at 新的覆盖旧的
+同一条状态，state_updated_at 新的覆盖旧的
+流水按 tx_id 去重追加
 ```
 
 当前已经实现手动合并导入：

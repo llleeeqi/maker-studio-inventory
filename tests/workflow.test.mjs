@@ -4,6 +4,7 @@ import { createDemoState, getStockInfo } from "../core/inventory.js";
 import { applyScanPayload, createScanSession, setSessionMode } from "../core/workflow.js";
 
 testLookup();
+testMsiLookup();
 testWeightAutoSwitchesToStocktake();
 testStocktakeAnyOrder();
 testMoveAnyOrder();
@@ -15,6 +16,21 @@ function testLookup() {
   const state = createDemoState();
   const session = createScanSession("lookup");
   const result = applyScanPayload(state, session, "spool:PLA-BLK-001");
+
+  assert.equal(result.changed, false);
+  assert.match(result.message, /PLA-BLK-001/);
+  assert.match(result.message, /RACK-A01/);
+  assert.equal(state.transactions.length, 0);
+}
+
+function testMsiLookup() {
+  const state = createDemoState();
+  const session = createScanSession("lookup");
+  const result = applyScanPayload(
+    state,
+    session,
+    "msi:v1;type=spool;id=PLA-BLK-001;name=黑色PLA;brand=Bambu;material=PLA;color=black;full_g=1200;tare_g=200;net_g=1000;created_on=260613",
+  );
 
   assert.equal(result.changed, false);
   assert.match(result.message, /PLA-BLK-001/);

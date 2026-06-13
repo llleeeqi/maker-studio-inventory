@@ -51,6 +51,10 @@ export function createDemoState() {
 
 export function parsePayload(text) {
   const payload = String(text || "").trim();
+  if (payload.toLowerCase().startsWith("msi:v1;")) {
+    return parseMsiPayload(payload);
+  }
+
   const index = payload.indexOf(":");
   if (index < 1) {
     return { type: "unknown", value: payload, raw: payload };
@@ -59,6 +63,44 @@ export function parsePayload(text) {
   const type = payload.slice(0, index).trim().toLowerCase();
   const value = payload.slice(index + 1).trim();
   return { type, value, raw: payload };
+}
+
+function parseMsiPayload(payload) {
+  const fields = {};
+  for (const segment of payload.slice("msi:v1;".length).split(";")) {
+    if (!segment) continue;
+    const index = segment.indexOf("=");
+    if (index <= 0) continue;
+    const key = segment.slice(0, index).trim().toLowerCase();
+    const value = segment.slice(index + 1).trim();
+    if (key) fields[key] = value;
+  }
+
+  const type = String(fields.type || "").toLowerCase();
+  if (type === "weight") {
+    return {
+      type,
+      value: fields.value_g || fields.weight_g || fields.value || "",
+      raw: payload,
+      fields,
+    };
+  }
+
+  if (type === "spool" || type === "part" || type === "other" || type === "location") {
+    return {
+      type,
+      value: fields.id || "",
+      raw: payload,
+      fields,
+    };
+  }
+
+  return {
+    type: "unknown",
+    value: payload,
+    raw: payload,
+    fields,
+  };
 }
 
 export function findItem(state, type, id) {

@@ -15,3 +15,5 @@
 | [08-first-version-app.md](./08-first-version-app.md) | 第一版正式 app 当前状态、验证方式和已知边界 |
 | [09-operation-button-logic.md](./09-operation-button-logic.md) | 手机 app 操作入口、按钮含义和扫码状态机 |
 | [10-scan-workbench-redesign.md](./10-scan-workbench-redesign.md) | 扫码台重设计：推翻模式按钮，按扫码事件和当前上下文驱动 |
+| [11-flutter-android-app.md](./11-flutter-android-app.md) | Flutter Android 手机 app：Material 3、扫码能力、构建和 APK 校验记录 |
+| [12-msi-v1-and-0.2-scope.md](./12-msi-v1-and-0.2-scope.md) | msi:v1 长期二维码协议、Profile/State/Transaction 数据边界和 0.2 手机闭环范围 |

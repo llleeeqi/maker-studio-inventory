@@ -2,7 +2,7 @@
 
 ## 当前结论
 
-第一版正式 app 已经可以作为本地检测版使用，并已打包成 Android debug APK。Web 入口是 `app/`，APK 入口是 `studio-inventory-debug.apk`，第一屏是快捷扫码，核心业务在 `core/`，数据先用浏览器/WebView `localStorage` 保存。
+第一版正式 app 已经可以作为本地检测版使用。Web 入口是 `app/`，早期 Capacitor APK 是 `studio-inventory-debug.apk`；新的 Flutter 手机 release 包是 `studio-inventory-flutter-0.2.0-arm64-release.apk`。Flutter 版本使用 Material 3 和 Android 原生构建链路，第一屏是扫码工作台。
 
 ## 已接通的用户流程
 
@@ -36,6 +36,7 @@
 APK：
 
 ```text
+studio-inventory-flutter-0.2.0-arm64-release.apk
 studio-inventory-debug.apk
 ```
 
@@ -48,6 +49,8 @@ npm run apk:debug
 构建输出：
 
 ```text
+mobile_flutter/build/app/outputs/flutter-apk/app-debug.apk
+mobile_flutter/build/app/outputs/flutter-apk/app-release.apk
 android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
@@ -102,6 +105,11 @@ workflow tests passed
 APK 构建检查：
 
 ```bash
+cd mobile_flutter
+/data/flutter/bin/flutter analyze
+/data/flutter/bin/flutter test
+/data/flutter/bin/flutter build apk --release --target-platform android-arm64
+
 npm run build:web
 npx cap sync android
 cd android
@@ -117,10 +125,17 @@ Verified using v2 scheme (APK Signature Scheme v2): true
 Number of signers: 1
 ```
 
+当前 Flutter release APK 还应包含：
+
+```text
+native-code: 'arm64-v8a'
+```
+
 ## 已知边界
 
-- 当前 APK 是 debug 签名包，不是 release 包。
+- 当前 Flutter 外发包是 arm64 release 构建，但仍使用 debug key 签名；后续要接正式 release 签名。
+- Flutter app 当前还是检测版，库存规则先在 Dart 内实现，后续要和 `core/` 的快照/合并协议继续对齐。
 - 存储仍是 `localStorage`，长期方案是 SQL.js + Capacitor Filesystem。
 - 手动导入/导出只作为备份和调试入口；WebDAV 自动同步还未接。
 - 标签目前只生成二维码预览，还未接精臣 BLE 打印。
-- 扫码目前通过手动输入、测试按钮或外部调用桥接；Android 原生扫码待接入。
+- Web/Capacitor 路线目前通过手动输入、测试按钮或外部调用桥接；Flutter 路线已经接入相机扫码。

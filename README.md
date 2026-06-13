@@ -55,9 +55,35 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 - 标签二维码预览。
 - 流水记录。
 - JSON 快照导入、导出、合并和预览。
-- Web 检测版和 Capacitor Android 壳。
+- Web 检测版、Capacitor Android 壳和 Flutter Android 0.2.0 手机包。
 
-扫码协议：
+当前可安装 Flutter APK：
+
+```text
+studio-inventory-flutter-0.2.0-arm64-release.apk
+```
+
+这个包使用 Flutter / Dart / Material 3 编写，Android 原生构建链路输出，包名为 `studio.inventory.mobile`，版本为 `0.2.0`。当前分发包是 arm64 release APK；debug APK 只用于本地调试。
+
+长期推荐扫码协议：
+
+```text
+msi:v1;type=spool;id=PLA-BLK-001;name=黑色PLA;brand=Bambu;material=PLA;color=black;full_g=1200;tare_g=200;net_g=1000;created_on=260613
+msi:v1;type=part;id=M3-SCREW-8-BLK;name=M3x8黑色圆头螺丝;category=screw;spec=M3x8;color=black;unit_weight_g=0.42;package_qty=100;created_on=260613
+msi:v1;type=other;id=TOOL-001;name=热风枪;note=喷嘴套装;created_on=260613
+msi:v1;type=location;id=RACK-A01;name=A架01格;created_on=260613
+msi:v1;type=weight;value_g=712.4
+```
+
+设计规则：
+
+- 二维码存固定档案，不存当前重量、数量、库位和出入库状态。
+- 当前库存状态存在本地数据里，真正入库后才计入库存。
+- 所有重量统一克，字段名带 `_g`。
+- 所有实体标签带 `created_on=YYMMDD`。
+- 库位可选，不阻塞入库。
+
+旧短码继续兼容：
 
 ```text
 weight:712.4
@@ -80,9 +106,11 @@ window.StudioInventoryScanner.push({ rawValue: "weight:712.4" });
 ```mermaid
 flowchart LR
   User[用户<br/>扫码 / 编辑 / 导入导出] --> Shell[app/<br/>正式使用界面]
+  User --> Flutter[mobile_flutter/<br/>Flutter Material 3 手机 app]
   Tools[tools/<br/>测试二维码] --> Shell
   Android[android/<br/>Capacitor APK 壳] --> Shell
 
+  Flutter --> Scanner
   Shell --> Scanner[scanner-port<br/>扫码输入归一化]
   Scanner --> Workflow[workflow<br/>扫码状态机]
   Workflow --> Inventory[inventory<br/>库存计算 / 流水]
@@ -103,6 +131,7 @@ flowchart LR
 | 路径 | 作用 |
 |---|---|
 | `app/` | 正式使用界面，第一屏是扫码工作台 |
+| `mobile_flutter/` | Flutter / Dart / Material 3 Android 手机 app |
 | `core/` | 平台无关业务核心 |
 | `tools/` | 测试二维码工具 |
 | `android/` | Capacitor Android 壳 |
@@ -114,14 +143,15 @@ flowchart LR
 
 近期：
 
-- Android 原生扫码替换手动输入。
-- Android 壳尽量用原生能力处理相机、文件、权限、蓝牙等平台事项，固定库存逻辑保持在 `core/`。
-- SQL.js + Capacitor Filesystem 替换 localStorage。
-- WebDAV 快照同步。
-- 标签模板和精臣 BLE 打印。
+- Flutter Android app 继续承接手机主入口，扫码、震动、声音、手电筒等高频能力优先走 Android 原生能力。
+- 实现 `msi:v1` 协议、固定档案 Profile、当前状态 State、流水 Transaction。
+- 手机本地 JSON 快照导出/导入。
+- 扫码测试站生成 `spool / part / other / location / weight` 全字段测试码。
 
 中期：
 
+- WebDAV 快照同步。
+- 标签打印 Web/JS SDK 验证页。
 - 批量导入物品。
 - 按库位/货架组织库存视图。
 - 更细的合并冲突预览。
@@ -148,3 +178,5 @@ flowchart LR
 - [docs/06-inventory-filters.md](./docs/06-inventory-filters.md)：库存筛选。
 - [docs/07-core-shell-boundary.md](./docs/07-core-shell-boundary.md)：核心和外壳边界。
 - [docs/08-first-version-app.md](./docs/08-first-version-app.md)：第一版状态和验证。
+- [docs/11-flutter-android-app.md](./docs/11-flutter-android-app.md)：Flutter Android 手机 app 路线和构建记录。
+- [docs/12-msi-v1-and-0.2-scope.md](./docs/12-msi-v1-and-0.2-scope.md)：msi:v1 二维码协议和 0.2 手机闭环范围。

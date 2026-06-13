@@ -55,9 +55,35 @@ The first version has the core loop working:
 - QR label preview.
 - Transaction log.
 - JSON snapshot import, export, merge, and merge preview.
-- Local Web version and Capacitor Android shell.
+- Local Web version, Capacitor Android shell, and Flutter Android 0.2.0 mobile package.
 
-Payload protocol:
+Current installable Flutter APK:
+
+```text
+studio-inventory-flutter-0.2.0-arm64-release.apk
+```
+
+This package is built with Flutter, Dart, Material 3, and the native Android build chain. Its package name is `studio.inventory.mobile`, version `0.2.0`. The distributable APK is an arm64 release build; debug APKs are only for local testing.
+
+Recommended long-term payload protocol:
+
+```text
+msi:v1;type=spool;id=PLA-BLK-001;name=Black PLA;brand=Bambu;material=PLA;color=black;full_g=1200;tare_g=200;net_g=1000;created_on=260613
+msi:v1;type=part;id=M3-SCREW-8-BLK;name=M3x8 black screw;category=screw;spec=M3x8;color=black;unit_weight_g=0.42;package_qty=100;created_on=260613
+msi:v1;type=other;id=TOOL-001;name=Heat gun;note=nozzle kit;created_on=260613
+msi:v1;type=location;id=RACK-A01;name=Rack A01;created_on=260613
+msi:v1;type=weight;value_g=712.4
+```
+
+Design rules:
+
+- QR codes store fixed profiles, not current weight, quantity, location, or stock status.
+- Current stock state lives in local app data and only counts after a real stock-in action.
+- All weight values use grams and keep `_g` in field names.
+- All entity labels include `created_on=YYMMDD`.
+- Location is optional and never blocks stock-in.
+
+Legacy short payloads remain supported:
 
 ```text
 weight:712.4
@@ -80,9 +106,11 @@ Any scanner source that can pass payloads into this bridge can reuse the same in
 ```mermaid
 flowchart LR
   User[User<br/>scan / edit / import / export] --> Shell[app/<br/>main UI]
+  User --> Flutter[mobile_flutter/<br/>Flutter Material 3 mobile app]
   Tools[tools/<br/>QR test tools] --> Shell
   Android[android/<br/>Capacitor APK shell] --> Shell
 
+  Flutter --> Scanner
   Shell --> Scanner[scanner-port<br/>scan input normalization]
   Scanner --> Workflow[workflow<br/>scan state machine]
   Workflow --> Inventory[inventory<br/>stock calculation / transactions]
@@ -103,6 +131,7 @@ flowchart LR
 | Path | Purpose |
 |---|---|
 | `app/` | Main UI. The first screen is the scan workbench. |
+| `mobile_flutter/` | Flutter / Dart / Material 3 Android mobile app. |
 | `core/` | Platform-independent business logic. |
 | `tools/` | QR payload test tools. |
 | `android/` | Capacitor Android shell. |
@@ -114,14 +143,15 @@ flowchart LR
 
 Near term:
 
-- Replace manual input with Android native scanning.
-- Keep camera, files, permissions, Bluetooth, and other platform concerns in the native Android shell while fixed inventory logic stays in `core/`.
-- Replace localStorage with SQL.js + Capacitor Filesystem.
-- Add WebDAV snapshot sync.
-- Add label templates and BLE printing.
+- Continue the Flutter Android app as the primary phone entry, with high-frequency scanning, haptics, sound, and torch controls handled through Android-native capabilities where appropriate.
+- Implement the `msi:v1` protocol, fixed Profile data, current State data, and Transaction logs.
+- Add local JSON snapshot export/import on the phone.
+- Update the QR test site to generate full-field `spool / part / other / location / weight` test payloads.
 
 Mid term:
 
+- Add WebDAV snapshot sync.
+- Validate label printing through the vendor Web/JS SDK.
 - Batch item import.
 - Location and shelf-based inventory views.
 - More detailed merge conflict previews.
@@ -148,3 +178,5 @@ Start from [docs/README.md](./docs/README.md).
 - [docs/06-inventory-filters.md](./docs/06-inventory-filters.md): inventory filters.
 - [docs/07-core-shell-boundary.md](./docs/07-core-shell-boundary.md): core/shell boundary.
 - [docs/08-first-version-app.md](./docs/08-first-version-app.md): first version status and verification.
+- [docs/11-flutter-android-app.md](./docs/11-flutter-android-app.md): Flutter Android app route and build record.
+- [docs/12-msi-v1-and-0.2-scope.md](./docs/12-msi-v1-and-0.2-scope.md): msi:v1 QR protocol and 0.2 mobile-local workflow scope.

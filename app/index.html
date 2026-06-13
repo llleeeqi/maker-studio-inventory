@@ -137,8 +137,32 @@
           <div class="form-header">
             <h2 id="catalogFormTitle">新增耗材卷</h2>
             <button type="button" id="newCatalogItem" class="ghost">新建</button>
+            <button type="button" id="scanCatalogItem" class="ghost">扫码录入</button>
             <button type="button" id="cloneCatalogItem" class="ghost">克隆</button>
             <button type="button" id="archiveCatalogItem" class="ghost">归档</button>
+          </div>
+
+          <div id="catalogScanPanel" class="catalog-scan-panel" hidden>
+            <div class="scanner-head catalog-scanner-head">
+              <div>
+                <strong id="catalogScannerTitle">扫码录入</strong>
+                <span id="catalogScannerStatus">扫物品码载入，扫重量或库位码填当前表单。</span>
+              </div>
+              <div class="scanner-actions">
+                <button id="startCatalogCameraScan" type="button">开始扫码</button>
+                <button id="stopCatalogCameraScan" type="button" class="ghost" disabled>停止</button>
+                <button id="closeCatalogScanner" type="button" class="ghost">收起</button>
+              </div>
+            </div>
+            <div id="catalogScannerViewport" class="scanner-viewport compact">
+              <video id="catalogScannerVideo" playsinline muted></video>
+              <canvas id="catalogScannerCanvas" hidden></canvas>
+              <div class="scanner-frame" aria-hidden="true"></div>
+            </div>
+            <div class="scan-input compact-input">
+              <input id="catalogScanText" autocomplete="off" placeholder="spool:PLA-BLK-001 / weight:712.4 / location:RACK-A01" />
+              <button id="catalogScanSubmit" type="button">填入</button>
+            </div>
           </div>
 
           <div class="form-grid catalog-grid">

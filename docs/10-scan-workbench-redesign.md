@@ -81,6 +81,16 @@ intent          workbench / inventoryLookup
 当前扫到的标签 + 当前是否已有待处理动作 + 当前物品状态
 ```
 
+0.2 的数据边界以 [12-msi-v1-and-0.2-scope.md](./12-msi-v1-and-0.2-scope.md) 为准：
+
+```text
+ItemProfile = 二维码固定档案
+ItemState   = 本地当前库存状态
+Transaction = 操作流水
+```
+
+有 `ItemProfile` 但没有 `ItemState` 时，表示“已建档，未入库”，不计入库存。不再引入 `unconfirmed` 状态。
+
 ## 扫码事件规则
 
 ### 扫到物品码
@@ -90,6 +100,9 @@ payload：
 ```text
 spool:<id>
 part:<id>
+msi:v1;type=spool;...
+msi:v1;type=part;...
+msi:v1;type=other;...
 ```
 
 规则：
@@ -101,6 +114,7 @@ part:<id>
 | 待处理库位 | 对该物品绑定库位 |
 | 物品已出库且待处理重量 | 重新入库，并写入新重量 |
 | 物品已出库且无待处理重量 | 展示已出库详情，提示扫重量码或手动录入重量后重新入库 |
+| 本地没有档案但扫到完整 `msi:v1` | 恢复固定档案，只建 `ItemProfile`，不自动入库 |
 
 扫物品码默认就是查库存。
 
@@ -110,6 +124,7 @@ payload：
 
 ```text
 weight:<g>
+msi:v1;type=weight;value_g=<g>
 ```
 
 规则：
@@ -157,21 +172,13 @@ location:<code>
 同类耗材剩余卷数
 ```
 
-同类耗材不要长期靠名称字符串猜。下一步数据模型应加：
+同类耗材不单独依赖 `family` 字段。0.2 按固定档案字段自动统计：
 
 ```text
-family_id
+brand + material + color
 ```
 
-用于表示同一类耗材，例如同品牌、同材料、同颜色、同规格的一组卷。
-
-在没有 `family_id` 前，临时可用：
-
-```text
-brand + material + color + name
-```
-
-但这只是过渡方案。
+`family` 不进 `msi:v1`，避免二维码变长和长期维护出错。
 
 ### 零件详情
 
@@ -188,6 +195,22 @@ brand + material + color + name
 
 零件是否需要“出库”先不放进第一版扫码台，避免把耗材卷逻辑和零件领用逻辑混在一起。
 
+### 其他物品详情
+
+扫码 `other` 后展示：
+
+```text
+物品 ID
+名称
+备注
+建档日期
+当前状态：未入库 / 在库 / 已出库 / 已归档
+库位
+最近更新时间
+```
+
+`other` 只做登记、查找、库位和状态流转，不做重量或数量余量计算。
+
 ## 出库和重新入库
 
 出库不是归档。
@@ -195,8 +218,9 @@ brand + material + color + name
 建议字段：
 
 ```text
-checked_out_at   出库时间，空表示在库
-stocked_at       本次入库时间
+checked_out_on   出库日期，YYMMDD，空表示在库
+stocked_on       本次入库日期，YYMMDD
+created_at       流水精确时间，带时区
 ```
 
 ### 出库当前卷
@@ -210,7 +234,7 @@ stocked_at       本次入库时间
 点击后：
 
 ```text
-checked_out_at = now
+checked_out_on = 今天
 写流水 checkout
 当前卷状态变成已出库
 同类剩余卷数减少
@@ -239,10 +263,10 @@ checked_out_at = now
 重新入库后：
 
 ```text
-checked_out_at = ""
+checked_out_on = ""
 current_wt = 新重量
-stocked_at = now
-updated_at = now
+stocked_on = 今天或用户自定义日期
+state_updated_on = 今天
 写流水 checkin
 ```
 
@@ -291,16 +315,30 @@ updated_at = now
 
 建议不要在 0.1.4 页面上继续补按钮，按下面顺序重做：
 
-1. 新建核心扫码 reducer：输入 payload 和当前上下文，输出 `view / write / message`。
-2. 给耗材卷增加 `family_id / checked_out_at / stocked_at`。
-3. 重做扫码页 UI，只保留相机、当前卡片、动态按钮。
-4. 库存页扫码按钮复用同一个扫码台。
-5. 增加出库、重新入库、撤销上一步。
-6. 发布新版 APK。
+1. 实现 `msi:v1` parser，并兼容旧短码。
+2. 拆 `ItemProfile / ItemState / Transaction`。
+3. 新建核心扫码 reducer：输入 payload 和当前上下文，输出 `view / write / message`。
+4. 重做扫码页 UI，只保留相机、当前卡片、动态按钮。
+5. 库存页扫码按钮复用同一个扫码台。
+6. 增加入库、出库、重新入库、移库、撤销上一步。
+7. 导出/导入 JSON 快照。
+8. 发布新版 APK。
 
 ## 二维码测试工具要求
 
-测试工具不需要新增 payload 前缀。它应该继续生成：
+测试工具应该同时支持 `msi:v1` 推荐协议和旧短码兼容协议。
+
+推荐协议：
+
+```text
+msi:v1;type=spool;...
+msi:v1;type=part;...
+msi:v1;type=other;...
+msi:v1;type=location;...
+msi:v1;type=weight;value_g=...
+```
+
+旧短码兼容：
 
 ```text
 spool:<id>

@@ -10,7 +10,7 @@
     <header class="topbar">
       <div>
         <h1>二维码测试工具</h1>
-        <p>给工作室库存软件生成 `weight`、`spool`、`part`、`location` 测试码</p>
+        <p>生成 `msi:v1` 固定档案码、库位码和重量码，用来测试手机扫码闭环</p>
       </div>
       <a class="link-button" href="../app/">正式 app</a>
     </header>
@@ -18,17 +18,17 @@
     <main>
       <section class="tool-hero">
         <div>
-          <h2>测试工作台</h2>
-          <p>选类型、填字段、直接生成二维码；也可以按场景套码测试新版扫码台。</p>
+          <h2>扫码协议测试台</h2>
+          <p>默认生成长期可读的 `msi:v1;key=value` payload；也可以切到旧短码做兼容性测试。</p>
         </div>
         <div class="tool-protocol">
-          <strong>支持的 payload</strong>
-          <code>weight:&lt;grams&gt;</code>
-          <code>spool:&lt;id&gt;</code>
-          <code>part:&lt;id&gt;</code>
-          <code>location:&lt;code&gt;</code>
-          <code>raw:&lt;custom&gt;</code>
-          <span class="tool-hint">出库、重新入库是 app 动作，不新增二维码前缀。</span>
+          <strong>推荐 payload</strong>
+          <code>msi:v1;type=spool;...</code>
+          <code>msi:v1;type=part;...</code>
+          <code>msi:v1;type=other;...</code>
+          <code>msi:v1;type=location;...</code>
+          <code>msi:v1;type=weight;value_g=712.4</code>
+          <span class="tool-hint">二维码存固定档案；当前重量、数量、库位和状态存在 app 本地数据里。</span>
         </div>
       </section>
 
@@ -43,91 +43,83 @@
           </div>
 
           <div class="tool-type-row">
-            <button type="button" class="tool-type active" data-type-select="weight">weight</button>
-            <button type="button" class="tool-type" data-type-select="spool">spool</button>
+            <button type="button" class="tool-type active" data-type-select="spool">spool</button>
             <button type="button" class="tool-type" data-type-select="part">part</button>
+            <button type="button" class="tool-type" data-type-select="other">other</button>
             <button type="button" class="tool-type" data-type-select="location">location</button>
+            <button type="button" class="tool-type" data-type-select="weight">weight</button>
             <button type="button" class="tool-type" data-type-select="raw">raw</button>
           </div>
+
+          <label class="inline-toggle">
+            <input id="legacyMode" type="checkbox" />
+            生成旧短码兼容格式
+          </label>
 
           <label class="tool-hidden-select">
             类型
             <select id="qrType">
-              <option value="weight">weight</option>
               <option value="spool">spool</option>
               <option value="part">part</option>
+              <option value="other">other</option>
               <option value="location">location</option>
+              <option value="weight">weight</option>
               <option value="raw">raw</option>
             </select>
           </label>
 
           <div id="fieldHint" class="tool-hint"></div>
 
-          <div id="fieldsWeight" class="tool-fields active">
+          <div id="fieldsSpool" class="tool-fields active">
             <div class="tool-field-grid">
-              <label>
-                重量（克）
-                <input id="weightGrams" inputmode="decimal" placeholder="712.4" value="712.4" />
-              </label>
-            </div>
-          </div>
-
-          <div id="fieldsSpool" class="tool-fields">
-            <div class="tool-field-grid">
-              <label>
-                直接填 ID
-                <input id="spoolId" placeholder="PLA-BLK-001" />
-              </label>
-              <label>
-                材料
-                <input id="spoolMaterial" placeholder="PLA / PETG / ABS" value="PLA" />
-              </label>
-              <label>
-                颜色
-                <input id="spoolColor" placeholder="黑色 / 透明 / 红色" value="黑色" />
-              </label>
-              <label>
-                序号
-                <input id="spoolSerial" inputmode="numeric" placeholder="001" value="001" />
-              </label>
+              <label>实体 ID <input id="spoolId" placeholder="PLA-BLK-001" /></label>
+              <label>名称 <input id="spoolName" placeholder="黑色PLA" value="黑色PLA" /></label>
+              <label>品牌 <input id="spoolBrand" placeholder="Bambu" value="Bambu" /></label>
+              <label>材料 <input id="spoolMaterial" placeholder="PLA / PETG / ABS" value="PLA" /></label>
+              <label>颜色 <input id="spoolColor" placeholder="black / clear" value="black" /></label>
+              <label>满卷总重 full_g <input id="spoolFullG" inputmode="decimal" value="1200" /></label>
+              <label>空盘重量 tare_g <input id="spoolTareG" inputmode="decimal" value="200" /></label>
+              <label>标称净重 net_g <input id="spoolNetG" inputmode="decimal" value="1000" /></label>
+              <label>建档日期 created_on <input id="spoolCreatedOn" inputmode="numeric" value="260613" /></label>
             </div>
           </div>
 
           <div id="fieldsPart" class="tool-fields">
             <div class="tool-field-grid">
-              <label>
-                直接填 ID
-                <input id="partId" placeholder="M3-INSERT" />
-              </label>
-              <label>
-                名称
-                <input id="partName" placeholder="M3 热熔螺母" value="M3 热熔螺母" />
-              </label>
-              <label>
-                规格
-                <input id="partSpec" placeholder="M3 / 608 / M2x8" value="M3" />
-              </label>
+              <label>实体 ID <input id="partId" placeholder="M3-SCREW-8-BLK" /></label>
+              <label>名称 <input id="partName" placeholder="M3x8黑色圆头螺丝" value="M3x8黑色圆头螺丝" /></label>
+              <label>类别 category <input id="partCategory" placeholder="screw" value="screw" /></label>
+              <label>规格 spec <input id="partSpec" placeholder="M3x8" value="M3x8" /></label>
+              <label>颜色/表面处理 <input id="partColor" placeholder="black" value="black" /></label>
+              <label>单件重量 unit_weight_g <input id="partUnitWeightG" inputmode="decimal" value="0.42" /></label>
+              <label>包装数量 package_qty <input id="partPackageQty" inputmode="numeric" value="100" /></label>
+              <label>建档日期 created_on <input id="partCreatedOn" inputmode="numeric" value="260613" /></label>
+            </div>
+          </div>
+
+          <div id="fieldsOther" class="tool-fields">
+            <div class="tool-field-grid">
+              <label>实体 ID <input id="otherId" placeholder="TOOL-001" /></label>
+              <label>名称 <input id="otherName" placeholder="热风枪" value="热风枪" /></label>
+              <label>短备注 note <input id="otherNote" placeholder="喷嘴套装" value="喷嘴套装" /></label>
+              <label>建档日期 created_on <input id="otherCreatedOn" inputmode="numeric" value="260613" /></label>
             </div>
           </div>
 
           <div id="fieldsLocation" class="tool-fields">
             <div class="tool-field-grid">
-              <label>
-                直接填库位
-                <input id="locationId" placeholder="RACK-A01" />
-              </label>
-              <label>
-                区域
-                <input id="locationArea" placeholder="RACK / BOX / BIN" value="RACK" />
-              </label>
-              <label>
-                排号
-                <input id="locationRow" placeholder="A" value="A" />
-              </label>
-              <label>
-                位号
-                <input id="locationSlot" inputmode="numeric" placeholder="01" value="01" />
-              </label>
+              <label>库位 ID <input id="locationId" placeholder="RACK-A01" /></label>
+              <label>名称 <input id="locationName" placeholder="A架01格" value="A架01格" /></label>
+              <label>区域 <input id="locationArea" placeholder="RACK / BOX / BIN" value="RACK" /></label>
+              <label>排号 <input id="locationRow" placeholder="A" value="A" /></label>
+              <label>位号 <input id="locationSlot" inputmode="numeric" placeholder="01" value="01" /></label>
+              <label>建档日期 created_on <input id="locationCreatedOn" inputmode="numeric" value="260613" /></label>
+            </div>
+          </div>
+
+          <div id="fieldsWeight" class="tool-fields">
+            <div class="tool-field-grid">
+              <label>重量 value_g <input id="weightGrams" inputmode="decimal" placeholder="712.4" value="712.4" /></label>
             </div>
           </div>
 
@@ -135,7 +127,7 @@
             <div class="tool-field-grid single">
               <label>
                 自定义 payload
-                <input id="rawPayload" placeholder="spool:PLA-BLK-001" value="weight:712.4" />
+                <input id="rawPayload" placeholder="msi:v1;type=spool;..." value="msi:v1;type=weight;value_g=712.4" />
               </label>
             </div>
           </div>
@@ -147,9 +139,9 @@
           <div class="quick-payloads quick-payloads-tools">
             <button data-sample="spool">随机耗材卷</button>
             <button data-sample="part">随机零件</button>
-            <button data-sample="weight">随机重量</button>
+            <button data-sample="other">随机其他</button>
             <button data-sample="location">随机库位</button>
-            <button data-sample="raw">随机原始码</button>
+            <button data-sample="weight">随机重量</button>
           </div>
         </section>
 
@@ -160,16 +152,16 @@
           </div>
           <div class="qr-output">
             <div id="qrOutput" class="qr-box"></div>
-            <code id="qrPayload">weight:712.4</code>
+            <code id="qrPayload">msi:v1;type=spool;...</code>
           </div>
-          <div id="copyStatus" class="tool-hint">复制后可直接贴到扫码测试里。</div>
+          <div id="copyStatus" class="tool-hint">复制后可直接贴到手机 app 手动补录里。</div>
         </section>
       </section>
 
       <section class="tool-panel">
         <div class="tool-section-head">
           <h2>扫码台场景套码</h2>
-          <p class="tool-subtitle">按顺序扫，测试重设计后的扫码台；当前 APK 尚未完整实现这些行为。</p>
+          <p class="tool-subtitle">按顺序扫，测试 0.2 手机扫码闭环。</p>
         </div>
         <div id="scenarioGrid" class="scenario-grid"></div>
       </section>

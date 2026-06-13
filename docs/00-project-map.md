@@ -12,6 +12,7 @@
 工作室物品管理/
 ├── core/                # 平台无关核心
 ├── app/                 # Web 外壳 / 当前正式库存软件
+├── mobile_flutter/      # Flutter / Dart / Material 3 Android 手机 app
 ├── tools/               # 测试工具
 ├── tests/               # 可在 Node 里跑的核心流程测试
 ├── docs/                # 后续开发记忆和设计说明
@@ -47,6 +48,25 @@
 | `qr.js` | 离线二维码 SVG 渲染 | 打标签和测试工具共用，不依赖外部 API |
 | `capacitor.config.json` | Android 壳配置草案 | 后续 Capacitor 初始化时保留 app 名和 webDir 意图 |
 
+## mobile_flutter/
+
+`mobile_flutter/` 是新的手机 app 主线，使用 Flutter / Dart / Material 3 和 Android 原生构建链路。
+
+| 路径 | 职责 |
+|---|---|
+| `lib/main.dart` | 当前 Flutter 单文件 app：扫码、库存、新增、流水四个主入口 |
+| `android/` | Flutter 生成的 Android 工程，包名 `studio.inventory.mobile` |
+| `test/widget_test.dart` | 首页和底部导航的 widget 冒烟测试 |
+| `pubspec.yaml` | Flutter 依赖、版本号和 app 元数据 |
+
+当前 0.2.0 手机安装包已经生成：
+
+```text
+studio-inventory-flutter-0.2.0-arm64-release.apk
+```
+
+这条路线的原则：手机端高频交互先用 Flutter Material 3 做成真 app；扫码、相机、震动、声音、手电筒等能力用插件或 Android 原生链路完成；库存规则后续再和 `core/` 做更严格的共享或协议对齐。
+
 ## tools/
 
 `tools/` 是测试页，不是正式库存软件。
@@ -54,7 +74,7 @@
 | 文件 | 职责 |
 |---|---|
 | `index.html` | 测试工具页面 |
-| `tools.js` | 生成 `weight:` / `spool:` / `part:` / `location:` 二维码 |
+| `tools.js` | 生成 `msi:v1` 测试二维码，并保留 `weight:` / `spool:` / `part:` / `location:` 短码兼容模式 |
 
 保留它的原因：正式 app 要尽量少干扰，测试二维码、样例输入、压力测试都放工具页。
 

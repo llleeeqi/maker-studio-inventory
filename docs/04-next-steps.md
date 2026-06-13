@@ -12,6 +12,20 @@
 
 第一版状态详见 [08-first-version-app.md](./08-first-version-app.md)。
 
+## 0.2：手机本地扫码闭环
+
+0.2 只做手机本地闭环，详见 [12-msi-v1-and-0.2-scope.md](./12-msi-v1-and-0.2-scope.md)。
+
+1. Flutter app 支持 `msi:v1` 可读二维码协议。
+2. 新增/编辑能生成 `spool`、`part`、`other`、`location`、`weight` payload。
+3. 扫未知 `msi:v1` 标签能恢复 `ItemProfile`，但不自动创建库存状态。
+4. 数据模型拆成 `ItemProfile`、`ItemState`、`Transaction`。
+5. 入库必须满足类型条件：耗材要当前重量，零件要数量或总重量，其他只需确认。
+6. 库位可选，不阻塞入库；后续可扫码绑定。
+7. 关键动作写流水，流水保留带时区的精确 `created_at` 和 `device_id`。
+8. 本地先用 JSON 快照持久化，支持导出/导入恢复。
+9. Flutter Dart 逻辑可以独立实现，但 payload、快照和字段语义必须和文档一致。
+
 ## 正式 app 继续补强
 
 1. 给归档操作加二次确认，避免误归档。
@@ -19,31 +33,25 @@
 3. 增加“未称重 / 未估算”筛选。
 4. 增加“按库位分组”和“只看某货架/箱子”。
 5. 给导入预览增加更细的字段差异展示。
-6. 接入本地文件存储和 WebDAV 云同步，替代手动快照作为日常数据流。
-
-## Android APK
-
-1. 初始化 Capacitor 工程。
-2. 把 `app/` 作为 Web 根。
-3. 接原生二维码扫码插件。
-4. 把扫码结果传给 `window.StudioInventory.handleScanPayload(payload)`。
-5. 把 `storage.js` 替换为 SQL.js + 文件存储。
 
 ## 同步
+
+WebDAV 放中期，0.2 先只做本地 JSON 快照和手动导入导出。
 
 1. 实现 WebDAV 配置页。
 2. 实现上传本地 snapshot。
 3. 实现下载远程 snapshot。
-4. 下载后调用 `mergeStates()` 合并。
+4. 下载后合并 `profiles`、`states`、`transactions`。
 5. 同步成功后上传合并后的新 snapshot。
 
 ## 中期：助手与服务端路线
 
-1. 增加自然语言助手查询，先只读库存和低库存状态，不直接改数据。
-2. 调研 Docker 服务端 + PWA 渐进式方案。
-3. 评估 PWA 在手机浏览器里的扫码速度、离线能力和安装体验。
-4. 如果 PWA 高频扫码性能不够，继续保留 Android APK 作为主扫码入口。
-5. 服务端版本优先复用 `core/`、快照协议和合并规则。
+1. WebDAV 自动同步。
+2. 增加自然语言助手查询，先只读库存和低库存状态，不直接改数据。
+3. 调研 Docker 服务端 + PWA 渐进式方案。
+4. 评估 PWA 在手机浏览器里的扫码速度、离线能力和安装体验。
+5. 如果 PWA 高频扫码性能不够，继续保留 Android APK 作为主扫码入口。
+6. 服务端版本优先复用 `msi:v1`、快照协议和合并规则。
 
 ## 远期：多设备和 PWA
 
@@ -53,7 +61,7 @@
 
 ## 打印
 
-1. 标签模板先在 `app/label` 思路下稳定。
-2. Android BLE 连接精臣。
-3. 把二维码和文字转成打印机协议包。
-4. 打印成功写流水。
+1. 先等厂商 Web/JS SDK，优先验证电脑 Web 端通过 USB 打印文字 + 二维码。
+2. 第一版只做打印验证页，用于验证 `msi:v1` payload、中文文字和二维码可扫性。
+3. Android / iOS / 小程序 / UNIAPP 蓝牙 SDK 放后面。
+4. ESP8266 局域网打印桥放中期探索。

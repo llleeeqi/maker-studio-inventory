@@ -9,6 +9,7 @@ import {
 import {
   getStockInfo,
   listItems,
+  parsePayload,
 } from "../core/inventory.js";
 import { countLowStock, filterInventory } from "../core/filters.js";
 import { renderQrSvg } from "./qr.js";
@@ -28,6 +29,7 @@ let state = loadState();
 let scanSession = createScanSession();
 let scanLog = [];
 let activeScanStream = null;
+let activeCameraTarget = null;
 let scanFrameRequest = 0;
 let barcodeDetector = null;
 let barcodeDetectorFailed = false;
@@ -78,9 +80,21 @@ const els = {
   catalogName: document.querySelector("#catalogName"),
   catalogMessage: document.querySelector("#catalogMessage"),
   newCatalogItem: document.querySelector("#newCatalogItem"),
+  scanCatalogItem: document.querySelector("#scanCatalogItem"),
   cloneCatalogItem: document.querySelector("#cloneCatalogItem"),
   archiveCatalogItem: document.querySelector("#archiveCatalogItem"),
   generateCatalogId: document.querySelector("#generateCatalogId"),
+  catalogScanPanel: document.querySelector("#catalogScanPanel"),
+  catalogScannerTitle: document.querySelector("#catalogScannerTitle"),
+  catalogScannerStatus: document.querySelector("#catalogScannerStatus"),
+  catalogScannerViewport: document.querySelector("#catalogScannerViewport"),
+  catalogScannerVideo: document.querySelector("#catalogScannerVideo"),
+  catalogScannerCanvas: document.querySelector("#catalogScannerCanvas"),
+  startCatalogCameraScan: document.querySelector("#startCatalogCameraScan"),
+  stopCatalogCameraScan: document.querySelector("#stopCatalogCameraScan"),
+  closeCatalogScanner: document.querySelector("#closeCatalogScanner"),
+  catalogScanText: document.querySelector("#catalogScanText"),
+  catalogScanSubmit: document.querySelector("#catalogScanSubmit"),
   labelItem: document.querySelector("#labelItem"),
   makeItemQr: document.querySelector("#makeItemQr"),
   labelQr: document.querySelector("#labelQr"),
@@ -106,7 +120,7 @@ function bindEvents() {
   els.modes.forEach((button) => {
     button.addEventListener("click", () => {
       setScanMode(button.dataset.mode);
-      if (!activeScanStream) startCameraScan();
+      if (!activeScanStream) startCameraScan("scan");
     });
   });
 
@@ -121,7 +135,7 @@ function bindEvents() {
   els.scanText.addEventListener("keydown", (event) => {
     if (event.key === "Enter") consumeScanText();
   });
-  els.startCameraScan.addEventListener("click", startCameraScan);
+  els.startCameraScan.addEventListener("click", () => startCameraScan("scan"));
   els.stopCameraScan.addEventListener("click", () => stopCameraScan());
   els.toggleTorch.addEventListener("click", toggleTorch);
 
@@ -142,17 +156,28 @@ function bindEvents() {
   els.importFile.addEventListener("change", importData);
   els.catalogForm.addEventListener("submit", saveCatalogForm);
   els.catalogType.addEventListener("change", () => setCatalogForm(createEmptyCatalogForm(els.catalogType.value)));
-  els.newCatalogItem.addEventListener("click", () => setCatalogForm(createEmptyCatalogForm(els.catalogType.value)));
+  els.newCatalogItem.addEventListener("click", () => {
+    closeCatalogScanner();
+    setCatalogForm(createEmptyCatalogForm(els.catalogType.value));
+  });
+  els.scanCatalogItem.addEventListener("click", () => openCatalogScanner("fill"));
   els.cloneCatalogItem.addEventListener("click", cloneCurrentCatalogItem);
   els.archiveCatalogItem.addEventListener("click", toggleArchiveCurrentCatalogItem);
   els.generateCatalogId.addEventListener("click", fillGeneratedCatalogId);
+  els.startCatalogCameraScan.addEventListener("click", () => startCameraScan("catalog"));
+  els.stopCatalogCameraScan.addEventListener("click", () => stopCameraScan());
+  els.closeCatalogScanner.addEventListener("click", () => closeCatalogScanner());
+  els.catalogScanSubmit.addEventListener("click", consumeCatalogScanText);
+  els.catalogScanText.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") consumeCatalogScanText();
+  });
   els.makeItemQr.addEventListener("click", makeItemQr);
 }
 
 function switchView(viewId) {
   els.tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.view === viewId));
   els.views.forEach((view) => view.classList.toggle("active", view.id === viewId));
-  if (viewId !== "scanView") stopCameraScan("");
+  stopCameraScan("");
 }
 
 function setScanMode(mode) {
@@ -169,21 +194,25 @@ function consumeScanText() {
   scannerPort.push(text);
 }
 
-async function startCameraScan() {
+async function startCameraScan(target = "scan") {
   primeScanAudio();
+  const camera = getCameraTarget(target);
 
   if (activeScanStream) {
-    setScannerStatus("扫码中：对准二维码。");
-    return;
+    if (activeCameraTarget === target) {
+      setScannerStatus("扫码中：对准二维码。", target);
+      return;
+    }
+    stopCameraScan("");
   }
 
   if (!navigator.mediaDevices?.getUserMedia) {
-    setScannerStatus("当前环境不支持相机扫码，请使用手动补录。");
+    setScannerStatus("当前环境不支持相机扫码，请使用手动补录。", target);
     return;
   }
 
   try {
-    setScannerStatus("正在打开相机...");
+    setScannerStatus("正在打开相机...", target);
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
       video: {
@@ -194,21 +223,25 @@ async function startCameraScan() {
     });
 
     activeScanStream = stream;
-    els.scannerVideo.srcObject = stream;
-    els.scannerViewport.classList.add("active");
-    els.startCameraScan.disabled = true;
-    els.stopCameraScan.disabled = false;
-    await els.scannerVideo.play();
+    activeCameraTarget = target;
+    camera.video.srcObject = stream;
+    camera.viewport.classList.add("active");
+    camera.startButton.disabled = true;
+    camera.stopButton.disabled = false;
+    await camera.video.play();
     updateTorchControl();
-    setScannerStatus("扫码中：对准二维码。");
+    setScannerStatus("扫码中：对准二维码。", target);
     scanFrameRequest = requestAnimationFrame(readCameraFrame);
   } catch (error) {
-    stopCameraScan("");
-    setScannerStatus(formatCameraError(error));
+    stopCameraScan("", target);
+    setScannerStatus(formatCameraError(error), target);
   }
 }
 
-function stopCameraScan(message = "扫码已停止。") {
+function stopCameraScan(message = "扫码已停止。", target = activeCameraTarget) {
+  const stoppedTarget = target || activeCameraTarget;
+  if (!stoppedTarget && !activeScanStream) return;
+
   if (scanFrameRequest) {
     cancelAnimationFrame(scanFrameRequest);
     scanFrameRequest = 0;
@@ -219,16 +252,13 @@ function stopCameraScan(message = "扫码已停止。") {
     activeScanStream = null;
   }
 
-  els.scannerVideo.pause();
-  els.scannerVideo.srcObject = null;
-  els.scannerViewport.classList.remove("active");
-  els.startCameraScan.disabled = false;
-  els.stopCameraScan.disabled = true;
+  if (stoppedTarget) resetCameraUi(getCameraTarget(stoppedTarget));
   torchEnabled = false;
+  activeCameraTarget = null;
   updateTorchControl();
   lastCameraPayload = "";
   lastCameraPayloadAt = 0;
-  if (message) setScannerStatus(message);
+  if (message && stoppedTarget) setScannerStatus(message, stoppedTarget);
 }
 
 async function toggleTorch() {
@@ -249,13 +279,14 @@ async function toggleTorch() {
 }
 
 async function readCameraFrame() {
-  if (!activeScanStream) return;
+  if (!activeScanStream || !activeCameraTarget) return;
+  const target = activeCameraTarget;
 
   try {
-    const payload = await decodeCameraFrame();
-    if (payload) acceptCameraPayload(payload);
+    const payload = await decodeCameraFrame(target);
+    if (payload) acceptCameraPayload(payload, target);
   } catch (error) {
-    setScannerStatus(`扫码解析失败：${error.message}`);
+    setScannerStatus(`扫码解析失败：${error.message}`, target);
   }
 
   if (activeScanStream) {
@@ -263,8 +294,9 @@ async function readCameraFrame() {
   }
 }
 
-async function decodeCameraFrame() {
-  const video = els.scannerVideo;
+async function decodeCameraFrame(target) {
+  const camera = getCameraTarget(target);
+  const video = camera.video;
   if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.videoWidth || !video.videoHeight) {
     return "";
   }
@@ -280,13 +312,14 @@ async function decodeCameraFrame() {
     }
   }
 
-  return decodeCameraFrameWithJsQr(video);
+  return decodeCameraFrameWithJsQr(camera);
 }
 
-function decodeCameraFrameWithJsQr(video) {
+function decodeCameraFrameWithJsQr(camera) {
   if (typeof window.jsQR !== "function") return "";
 
-  const canvas = els.scannerCanvas;
+  const video = camera.video;
+  const canvas = camera.canvas;
   const context = canvas.getContext("2d", { willReadFrequently: true });
   if (!context) return "";
   const scale = Math.min(1, 720 / video.videoWidth);
@@ -304,7 +337,7 @@ function decodeCameraFrameWithJsQr(video) {
   return code?.data || "";
 }
 
-function acceptCameraPayload(payload) {
+function acceptCameraPayload(payload, target) {
   const normalized = String(payload || "").trim();
   const now = Date.now();
   if (!normalized || (normalized === lastCameraPayload && now - lastCameraPayloadAt < 1400)) {
@@ -313,8 +346,12 @@ function acceptCameraPayload(payload) {
 
   lastCameraPayload = normalized;
   lastCameraPayloadAt = now;
-  setScannerStatus(`已识别：${normalized}`);
-  scannerPort.push(normalized);
+  setScannerStatus(`已识别：${normalized}`, target);
+  if (target === "catalog") {
+    handleCatalogScanPayload(normalized);
+  } else {
+    scannerPort.push(normalized);
+  }
 }
 
 function handlePayload(text) {
@@ -400,6 +437,118 @@ function renderLabelOptions() {
   }
 }
 
+function openCatalogScanner(mode = "fill") {
+  els.catalogScanPanel.hidden = false;
+  els.catalogScanPanel.dataset.mode = mode;
+  els.catalogScannerTitle.textContent = mode === "clone" ? "扫码克隆来源" : "扫码录入";
+  setScannerStatus(
+    mode === "clone"
+      ? "扫已有物品标签，作为克隆来源。"
+      : "扫物品码载入或填 ID；扫重量、库位码可写入当前表单。",
+    "catalog",
+  );
+  els.catalogScanText.focus();
+  startCameraScan("catalog");
+}
+
+function closeCatalogScanner(stopCamera = true) {
+  if (stopCamera && activeCameraTarget === "catalog") stopCameraScan("", "catalog");
+  els.catalogScanPanel.hidden = true;
+  els.catalogScanPanel.dataset.mode = "fill";
+  els.catalogScanText.value = "";
+}
+
+function consumeCatalogScanText() {
+  primeScanAudio();
+  const text = els.catalogScanText.value;
+  els.catalogScanText.value = "";
+  handleCatalogScanPayload(text);
+}
+
+function handleCatalogScanPayload(text) {
+  try {
+    const payload = parsePayload(text);
+    const mode = els.catalogScanPanel.dataset.mode || "fill";
+
+    if (payload.type === "spool" || payload.type === "part") {
+      applyCatalogItemScan(payload, mode);
+    } else if (payload.type === "weight") {
+      applyCatalogWeightScan(payload);
+    } else if (payload.type === "location") {
+      applyCatalogLocationScan(payload);
+    } else {
+      throw new Error(`无法用于录入：${payload.raw || "空内容"}`);
+    }
+
+    playScanFeedback();
+  } catch (error) {
+    els.catalogMessage.textContent = error.message;
+    setScannerStatus(error.message, "catalog");
+  }
+}
+
+function applyCatalogItemScan(payload, mode) {
+  const itemType = payload.type;
+  const id = String(payload.value || "").trim().toUpperCase();
+  if (!id) throw new Error("物品码缺少 ID。");
+
+  const entry = findCatalogEntry(itemType, id);
+  if (mode === "clone") {
+    if (!entry) throw new Error(`找不到可克隆物品：${payload.raw}`);
+    cloneCatalogById(itemType, id);
+    closeCatalogScanner();
+    return;
+  }
+
+  if (entry) {
+    setCatalogForm(formFromItem(itemType, entry.item));
+    els.catalogMessage.textContent = `已扫码载入 ${entry.item.id}，可继续编辑或生成标签。`;
+    closeCatalogScanner();
+    return;
+  }
+
+  setCatalogTypeForScannedItem(itemType);
+  els.catalogId.value = id;
+  els.catalogForm.dataset.mode = "create";
+  els.catalogFormTitle.textContent = `新增${itemType === "spool" ? "耗材卷" : "零件"}`;
+  els.catalogMessage.textContent = `已填入新${itemType === "spool" ? "耗材卷" : "零件"} ID：${id}`;
+  setScannerStatus(`已填入 ID：${id}`, "catalog");
+}
+
+function applyCatalogWeightScan(payload) {
+  const weight = Number(payload.value);
+  if (!Number.isFinite(weight) || weight <= 0) {
+    throw new Error(`重量格式错误：${payload.raw}`);
+  }
+
+  const form = readCatalogForm();
+  if (form.itemType === "spool") {
+    setNamedFormValue("current_wt", String(round(weight, 1)));
+    els.catalogMessage.textContent = `已填当前毛重：${round(weight, 1)}g。`;
+    setScannerStatus(`已填当前毛重：${round(weight, 1)}g`, "catalog");
+    return;
+  }
+
+  const unitWeight = Number(form.unit_wt);
+  const containerWeight = Number(form.container_wt || 0);
+  if (!Number.isFinite(unitWeight) || unitWeight <= 0 || !Number.isFinite(containerWeight) || containerWeight < 0) {
+    throw new Error("零件称重前先填单件重量和容器重量。");
+  }
+
+  const qty = Math.max(0, Math.floor((weight - containerWeight) / unitWeight));
+  setNamedFormValue("estimated_qty", String(qty));
+  els.catalogMessage.textContent = `已按 ${round(weight, 1)}g 估算数量：${qty} 件。`;
+  setScannerStatus(`已估算数量：${qty} 件`, "catalog");
+}
+
+function applyCatalogLocationScan(payload) {
+  const location = String(payload.value || "").trim();
+  if (!location) throw new Error("库位码缺少库位值。");
+  setNamedFormValue("location", location);
+  els.catalogMessage.textContent = `已填库位：${location}。`;
+  setScannerStatus(`已填库位：${location}`, "catalog");
+}
+
 function setCatalogForm(form) {
   els.catalogType.value = form.itemType;
   els.catalogForm.dataset.mode = form.id ? "edit" : "create";
@@ -410,14 +559,12 @@ function setCatalogForm(form) {
     element.value = form[element.name] ?? "";
   }
 
-  document.querySelectorAll("[data-catalog-field]").forEach((field) => {
-    field.hidden = field.dataset.catalogField !== form.itemType;
-  });
+  updateCatalogFieldVisibility(form.itemType);
 
   els.catalogMessage.textContent = form.id
     ? `正在编辑 ${form.itemType}:${form.id}${form.archived_at ? "（已归档）" : ""}。`
     : "新增物品后可在下方生成标签；从库存列表点物品会到这里编辑。";
-  els.cloneCatalogItem.disabled = !form.id;
+  els.cloneCatalogItem.disabled = false;
   els.archiveCatalogItem.disabled = !form.id;
   els.archiveCatalogItem.textContent = form.archived_at ? "恢复" : "归档";
 }
@@ -452,18 +599,23 @@ function loadCatalogItem(itemType, id) {
 
 function cloneCurrentCatalogItem() {
   const form = readCatalogForm();
-  if (!form.id) {
-    els.catalogMessage.textContent = "先从库存列表载入一个物品，再克隆。";
+  const entry = form.id ? findCatalogEntry(form.itemType, form.id) : null;
+  if (!entry) {
+    openCatalogScanner("clone");
     return;
   }
 
+  cloneCatalogById(form.itemType, form.id);
+}
+
+function cloneCatalogById(itemType, id) {
   try {
-    const cloned = cloneCatalogForm(state, form.itemType, form.id);
+    const cloned = cloneCatalogForm(state, itemType, id);
     setCatalogForm(cloned);
     els.catalogForm.dataset.mode = "create";
     els.catalogFormTitle.textContent = `克隆${cloned.itemType === "spool" ? "耗材卷" : "零件"}`;
     els.archiveCatalogItem.disabled = true;
-    els.catalogMessage.textContent = `已从 ${form.id} 克隆参数，新 ID 为 ${cloned.id}，确认后保存。`;
+    els.catalogMessage.textContent = `已从 ${id} 克隆参数，新 ID 为 ${cloned.id}，确认后保存。`;
   } catch (error) {
     els.catalogMessage.textContent = error.message;
   }
@@ -544,6 +696,29 @@ function makeItemQr() {
   els.labelQr.innerHTML = renderQrSvg(payload);
   els.labelTitle.textContent = `${entry.item.id} · ${entry.item.name}`;
   els.labelMeta.textContent = `${payload} · ${makeMeta(entry.itemType, entry.item)}`;
+}
+
+function findCatalogEntry(itemType, id) {
+  const normalizedId = String(id || "").trim().toUpperCase();
+  return listItems(state).find((candidate) => (
+    candidate.itemType === itemType && candidate.item.id === normalizedId
+  )) || null;
+}
+
+function setCatalogTypeForScannedItem(itemType) {
+  els.catalogType.value = itemType;
+  updateCatalogFieldVisibility(itemType);
+}
+
+function updateCatalogFieldVisibility(itemType) {
+  document.querySelectorAll("[data-catalog-field]").forEach((field) => {
+    field.hidden = field.dataset.catalogField !== itemType;
+  });
+}
+
+function setNamedFormValue(name, value) {
+  const field = els.catalogForm.elements.namedItem(name);
+  if (field) field.value = value;
 }
 
 function exportData() {
@@ -642,8 +817,42 @@ function setResult(text) {
   els.scanResult.textContent = text;
 }
 
-function setScannerStatus(text) {
-  els.scannerStatus.textContent = text;
+function setScannerStatus(text, target) {
+  setCameraStatus(text, target);
+}
+
+function setCameraStatus(text, target = activeCameraTarget || "scan") {
+  getCameraTarget(target).status.textContent = text;
+}
+
+function getCameraTarget(target = "scan") {
+  if (target === "catalog") {
+    return {
+      viewport: els.catalogScannerViewport,
+      video: els.catalogScannerVideo,
+      canvas: els.catalogScannerCanvas,
+      status: els.catalogScannerStatus,
+      startButton: els.startCatalogCameraScan,
+      stopButton: els.stopCatalogCameraScan,
+    };
+  }
+
+  return {
+    viewport: els.scannerViewport,
+    video: els.scannerVideo,
+    canvas: els.scannerCanvas,
+    status: els.scannerStatus,
+    startButton: els.startCameraScan,
+    stopButton: els.stopCameraScan,
+  };
+}
+
+function resetCameraUi(camera) {
+  camera.video.pause();
+  camera.video.srcObject = null;
+  camera.viewport.classList.remove("active");
+  camera.startButton.disabled = false;
+  camera.stopButton.disabled = true;
 }
 
 function getCameraTrack() {
@@ -651,8 +860,8 @@ function getCameraTrack() {
 }
 
 function updateTorchControl(supported = getTorchSupport()) {
-  els.toggleTorch.hidden = !activeScanStream;
-  els.toggleTorch.disabled = !activeScanStream || !supported;
+  els.toggleTorch.hidden = activeCameraTarget !== "scan" || !activeScanStream;
+  els.toggleTorch.disabled = activeCameraTarget !== "scan" || !activeScanStream || !supported;
   els.toggleTorch.textContent = supported
     ? `${torchEnabled ? "关闭" : "打开"}手电筒`
     : "手电筒不可用";
@@ -717,6 +926,11 @@ function formatCameraError(error) {
     return "相机被其他应用占用，请关闭后重试。";
   }
   return `无法打开相机：${error?.message || "未知错误"}`;
+}
+
+function round(value, digits) {
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
 }
 
 function selectLabelItem(itemType, id) {
