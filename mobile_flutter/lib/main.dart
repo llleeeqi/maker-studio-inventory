@@ -120,27 +120,41 @@ class ScanPage extends StatefulWidget {
   State<ScanPage> createState() => _ScanPageState();
 }
 
-class _ScanPageState extends State<ScanPage> {
+class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   late final MobileScannerController scanner;
   String message = '扫 msi:v1 标签恢复档案；入库、盘点、移库都由扫码上下文决定。';
   String lastPayload = '';
   DateTime lastPayloadAt = DateTime.fromMillisecondsSinceEpoch(0);
+  bool scannerBusy = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     scanner = MobileScannerController(
       autoStart: false,
       detectionSpeed: DetectionSpeed.normal,
       formats: const [BarcodeFormat.qrCode],
-      autoZoom: true,
+      lensType: CameraLensType.normal,
     );
+    scanner.addListener(_handleScannerState);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    scanner.removeListener(_handleScannerState);
     unawaited(scanner.dispose());
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      unawaited(_stopScanner(showMessage: false));
+    }
   }
 
   @override
@@ -225,21 +239,21 @@ class _ScanPageState extends State<ScanPage> {
                 children: [
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: () => scanner.start(),
+                      onPressed: scannerBusy ? null : _startScanner,
                       icon: const Icon(Icons.play_arrow),
-                      label: const Text('开始扫码'),
+                      label: Text(scannerBusy ? '启动中' : '开始扫码'),
                     ),
                   ),
                   const SizedBox(width: 8),
                   IconButton.filledTonal(
                     tooltip: '停止',
-                    onPressed: () => scanner.stop(),
+                    onPressed: scannerBusy ? null : _stopScanner,
                     icon: const Icon(Icons.stop),
                   ),
                   const SizedBox(width: 8),
                   IconButton.filledTonal(
                     tooltip: '手电筒',
-                    onPressed: () => scanner.toggleTorch(),
+                    onPressed: scannerBusy ? null : _toggleTorch,
                     icon: const Icon(Icons.flashlight_on),
                   ),
                   const SizedBox(width: 8),
@@ -306,6 +320,63 @@ class _ScanPageState extends State<ScanPage> {
     HapticFeedback.mediumImpact();
     SystemSound.play(SystemSoundType.click);
     setState(() => message = result);
+  }
+
+  Future<void> _startScanner() async {
+    if (scannerBusy || scanner.value.isRunning) return;
+    setState(() {
+      scannerBusy = true;
+      message = '正在打开相机...';
+    });
+    try {
+      await scanner.start(
+        cameraDirection: CameraFacing.back,
+        cameraLensType: CameraLensType.normal,
+      );
+      final error = scanner.value.error;
+      if (!mounted) return;
+      setState(() {
+        message = error == null ? '扫码中：对准二维码。' : _cameraErrorText(error);
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => message = _cameraErrorText(error));
+    } finally {
+      if (mounted) setState(() => scannerBusy = false);
+    }
+  }
+
+  Future<void> _stopScanner({bool showMessage = true}) async {
+    if (scannerBusy) return;
+    setState(() => scannerBusy = true);
+    try {
+      await scanner.stop();
+      if (mounted && showMessage) {
+        setState(() => message = '扫码已停止。');
+      }
+    } catch (error) {
+      if (mounted) setState(() => message = _cameraErrorText(error));
+    } finally {
+      if (mounted) setState(() => scannerBusy = false);
+    }
+  }
+
+  Future<void> _toggleTorch() async {
+    if (scannerBusy || !scanner.value.isRunning) {
+      setState(() => message = '先点“开始扫码”，相机启动后才能打开手电筒。');
+      return;
+    }
+    try {
+      await scanner.toggleTorch();
+    } catch (error) {
+      if (mounted) setState(() => message = _cameraErrorText(error));
+    }
+  }
+
+  void _handleScannerState() {
+    final error = scanner.value.error;
+    if (error == null || !mounted) return;
+    setState(() => message = _cameraErrorText(error));
   }
 
   void _runAction(String Function() action) {
@@ -2393,26 +2464,42 @@ class CatalogScannerSheet extends StatefulWidget {
   State<CatalogScannerSheet> createState() => _CatalogScannerSheetState();
 }
 
-class _CatalogScannerSheetState extends State<CatalogScannerSheet> {
+class _CatalogScannerSheetState extends State<CatalogScannerSheet>
+    with WidgetsBindingObserver {
   late final MobileScannerController scanner;
   String status = '扫 msi:v1 档案、重量码或库位码填当前表单。';
   String lastPayload = '';
   DateTime lastPayloadAt = DateTime.fromMillisecondsSinceEpoch(0);
+  bool scannerBusy = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     scanner = MobileScannerController(
-      autoStart: true,
+      autoStart: false,
       detectionSpeed: DetectionSpeed.normal,
       formats: const [BarcodeFormat.qrCode],
+      lensType: CameraLensType.normal,
     );
+    scanner.addListener(_handleScannerState);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    scanner.removeListener(_handleScannerState);
     unawaited(scanner.dispose());
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      unawaited(_stopScanner(showMessage: false));
+    }
   }
 
   @override
@@ -2437,6 +2524,12 @@ class _CatalogScannerSheetState extends State<CatalogScannerSheet> {
                 controller: scanner,
                 fit: BoxFit.cover,
                 onDetect: _onDetect,
+                errorBuilder: (context, error) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(_cameraErrorText(error)),
+                  ),
+                ),
               ),
             ),
           ),
@@ -2444,9 +2537,14 @@ class _CatalogScannerSheetState extends State<CatalogScannerSheet> {
           Row(
             children: [
               Expanded(child: Text(status)),
+              TextButton.icon(
+                onPressed: scannerBusy ? null : _startScanner,
+                icon: const Icon(Icons.play_arrow),
+                label: Text(scannerBusy ? '启动中' : '开始扫码'),
+              ),
               IconButton.filledTonal(
                 tooltip: '手电筒',
-                onPressed: () => scanner.toggleTorch(),
+                onPressed: scannerBusy ? null : _toggleTorch,
                 icon: const Icon(Icons.flashlight_on),
               ),
             ],
@@ -2479,6 +2577,76 @@ class _CatalogScannerSheetState extends State<CatalogScannerSheet> {
     SystemSound.play(SystemSoundType.click);
     setState(() => status = result);
   }
+
+  Future<void> _startScanner() async {
+    if (scannerBusy || scanner.value.isRunning) return;
+    setState(() {
+      scannerBusy = true;
+      status = '正在打开相机...';
+    });
+    try {
+      await scanner.start(
+        cameraDirection: CameraFacing.back,
+        cameraLensType: CameraLensType.normal,
+      );
+      final error = scanner.value.error;
+      if (!mounted) return;
+      setState(() {
+        status = error == null ? '扫码中：对准二维码。' : _cameraErrorText(error);
+      });
+    } catch (error) {
+      if (mounted) setState(() => status = _cameraErrorText(error));
+    } finally {
+      if (mounted) setState(() => scannerBusy = false);
+    }
+  }
+
+  Future<void> _stopScanner({bool showMessage = true}) async {
+    if (scannerBusy) return;
+    setState(() => scannerBusy = true);
+    try {
+      await scanner.stop();
+      if (mounted && showMessage) {
+        setState(() => status = '扫码已停止。');
+      }
+    } catch (error) {
+      if (mounted) setState(() => status = _cameraErrorText(error));
+    } finally {
+      if (mounted) setState(() => scannerBusy = false);
+    }
+  }
+
+  Future<void> _toggleTorch() async {
+    if (scannerBusy || !scanner.value.isRunning) {
+      setState(() => status = '先点“开始扫码”，相机启动后才能打开手电筒。');
+      return;
+    }
+    try {
+      await scanner.toggleTorch();
+    } catch (error) {
+      if (mounted) setState(() => status = _cameraErrorText(error));
+    }
+  }
+
+  void _handleScannerState() {
+    final error = scanner.value.error;
+    if (error == null || !mounted) return;
+    setState(() => status = _cameraErrorText(error));
+  }
+}
+
+String _cameraErrorText(Object error) {
+  if (error is MobileScannerException) {
+    final detail = error.errorDetails?.message;
+    if (detail != null && detail.trim().isNotEmpty) {
+      return '相机不可用：$detail';
+    }
+    return '相机不可用：${error.errorCode.name}';
+  }
+  if (error is PlatformException) {
+    return '相机不可用：${error.message ?? error.code}';
+  }
+  return '相机不可用：$error';
 }
 
 String buildMsiPayload(Map<String, String> fields) {

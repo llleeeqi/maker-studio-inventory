@@ -11,21 +11,21 @@ mobile_flutter/
 当前可安装 release 包：
 
 ```text
-studio-inventory-flutter-0.2.0-arm64-release.apk
+studio-inventory-flutter-0.2.1-arm64-release.apk
 ```
 
 APK 信息：
 
 ```text
 packageName: studio.inventory.mobile
-versionName: 0.2.0
-versionCode: 20
+versionName: 0.2.1
+versionCode: 21
 minSdk: 24
 targetSdk: 36
 native-code: arm64-v8a
 签名: debug key, v2 signature verified
 文件大小: 23M on disk / 24.1MB build output
-SHA-256: 3402066d6ce88958a955a8dc3a245f7e1088cc5c7a49e3573d0bd2fcef04e292
+SHA-256: 6674f9cf72a6fe65b3ef171dbf289b5f79e2380470b9fe05928c8e42ff4add3a
 ```
 
 ## App 结构
@@ -41,7 +41,7 @@ SHA-256: 3402066d6ce88958a955a8dc3a245f7e1088cc5c7a49e3573d0bd2fcef04e292
 - 小相机预览框。
 - 开始扫码、停止、手电筒按钮。
 - 扫码成功后触发震动和系统点击声。
-- 手动补录放到底部弹窗，作为测试和兜底，不占主流程。
+- 手动补录放到底部弹窗，作为测试和相机异常兜底，不占主流程。
 - 扫 `spool:` / `part:` / `weight:` / `location:` 后由状态机自动判断动作。
 
 库存页：
@@ -77,7 +77,17 @@ Android 原生构建链路
 库存状态机
 ```
 
-当前扫码插件是 `mobile_scanner`。构建时会出现一个未来兼容性警告：该插件仍使用 Kotlin Gradle Plugin。当前不影响 0.2.0 release APK 生成，但后续升级 Flutter 或插件时要重点复查。
+当前扫码插件是 `mobile_scanner`。构建时会出现一个未来兼容性警告：该插件仍使用 Kotlin Gradle Plugin。当前不影响 0.2.1 release APK 生成，但后续升级 Flutter 或插件时要重点复查。
+
+## 0.2.1 相机修复
+
+0.2.1 针对部分手机授权后相机初始化报空指针的问题做了防护：
+
+- Manifest 增加 `android.hardware.camera` 和 `android.hardware.camera.autofocus` 的 optional feature 声明。
+- 扫码控制器固定使用后置 normal 镜头，避免多摄设备默认 `any` 镜头选择不稳定。
+- 主扫码页和新增页扫码弹窗都改为显式启动，不在弹窗创建时自动抢占相机。
+- `start / stop / toggleTorch` 统一捕获异常，失败后继续保留手动补录入口。
+- app 进入后台、暂停或隐藏时主动停止相机，避免 CameraX 生命周期残留。
 
 ## APK 体积说明
 

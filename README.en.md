@@ -59,9 +59,9 @@ The first version has the core loop working:
 
 Current installable Flutter APK:
 
-[studio-inventory-flutter-0.2.0-arm64-release.apk](./studio-inventory-flutter-0.2.0-arm64-release.apk)
+[studio-inventory-flutter-0.2.1-arm64-release.apk](./studio-inventory-flutter-0.2.1-arm64-release.apk)
 
-This package is built with Flutter, Dart, Material 3, and the native Android build chain. Its package name is `studio.inventory.mobile`, version `0.2.0`. The distributable APK is an arm64 release build; debug APKs are only for local testing. SHA-256: `3402066d6ce88958a955a8dc3a245f7e1088cc5c7a49e3573d0bd2fcef04e292`.
+This package is built with Flutter, Dart, Material 3, and the native Android build chain. Its package name is `studio.inventory.mobile`, version `0.2.1`. The distributable APK is an arm64 release build; debug APKs are only for local testing. SHA-256: `6674f9cf72a6fe65b3ef171dbf289b5f79e2380470b9fe05928c8e42ff4add3a`.
 
 Recommended long-term payload protocol:
 
