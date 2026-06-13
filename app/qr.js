@@ -1,9 +1,17 @@
 const VERSION_TABLE = [
-  { version: 1, size: 21, dataCodewords: 19, eccCodewords: 7, maxBytes: 17 },
-  { version: 2, size: 25, dataCodewords: 34, eccCodewords: 10, maxBytes: 32 },
-  { version: 3, size: 29, dataCodewords: 55, eccCodewords: 15, maxBytes: 53 },
-  { version: 4, size: 33, dataCodewords: 80, eccCodewords: 20, maxBytes: 78 },
+  { version: 1, size: 21, dataCodewords: 19, eccCodewords: 7, alignment: [], blocks: [19] },
+  { version: 2, size: 25, dataCodewords: 34, eccCodewords: 10, alignment: [6, 18], blocks: [34] },
+  { version: 3, size: 29, dataCodewords: 55, eccCodewords: 15, alignment: [6, 22], blocks: [55] },
+  { version: 4, size: 33, dataCodewords: 80, eccCodewords: 20, alignment: [6, 26], blocks: [80] },
+  { version: 5, size: 37, dataCodewords: 108, eccCodewords: 26, alignment: [6, 30], blocks: [108] },
+  { version: 6, size: 41, dataCodewords: 136, eccCodewords: 18, alignment: [6, 34], blocks: [68, 68] },
+  { version: 7, size: 45, dataCodewords: 156, eccCodewords: 20, alignment: [6, 22, 38], blocks: [78, 78] },
+  { version: 8, size: 49, dataCodewords: 194, eccCodewords: 24, alignment: [6, 24, 42], blocks: [97, 97] },
+  { version: 9, size: 53, dataCodewords: 232, eccCodewords: 30, alignment: [6, 26, 46], blocks: [116, 116] },
+  { version: 10, size: 57, dataCodewords: 274, eccCodewords: 18, alignment: [6, 28, 50], blocks: [68, 68, 69, 69] },
 ];
+
+const MAX_SUPPORTED_BYTES = maxSupportedBytes();
 
 export function renderQrSvg(text, scale = 8, border = 4) {
   const qr = makeQr(text);
@@ -25,27 +33,53 @@ export function renderQrSvg(text, scale = 8, border = 4) {
   return `<svg viewBox="0 0 ${pixels} ${pixels}" width="${pixels * scale}" height="${pixels * scale}" role="img" aria-label="QR ${escapeAttr(text)}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#fff"/><g fill="#111">${parts.join("")}</g></svg>`;
 }
 
+export function getQrInfo(text) {
+  const bytes = new TextEncoder().encode(text);
+  const spec = selectSpec(bytes.length);
+  return {
+    bytes: bytes.length,
+    version: spec?.version ?? null,
+    size: spec?.size ?? null,
+    maxBytes: spec ? getMaxBytes(spec) : MAX_SUPPORTED_BYTES,
+    maxSupportedBytes: MAX_SUPPORTED_BYTES,
+    fits: Boolean(spec),
+  };
+}
+
 function makeQr(text) {
   const bytes = new TextEncoder().encode(text);
-  const spec = VERSION_TABLE.find((item) => bytes.length <= item.maxBytes);
+  const spec = selectSpec(bytes.length);
   if (!spec) {
-    throw new Error("二维码内容过长，当前检测版最多支持 78 字节。");
+    throw new Error(`二维码内容过长，当前检测版最多支持 ${MAX_SUPPORTED_BYTES} 字节。`);
   }
 
   const data = encodeData(bytes, spec);
-  const ecc = reedSolomonRemainder(data, spec.eccCodewords);
-  const codewords = [...data, ...ecc];
+  const codewords = interleaveCodewords(data, spec);
   const qr = createMatrix(spec);
   drawCodewords(qr, codewords);
   applyMask(qr, 0);
   drawFormatBits(qr, 0);
+  drawVersionBits(qr);
   return qr;
+}
+
+function selectSpec(byteLength) {
+  return VERSION_TABLE.find((item) => byteLength <= getMaxBytes(item));
+}
+
+function maxSupportedBytes() {
+  return getMaxBytes(VERSION_TABLE[VERSION_TABLE.length - 1]);
+}
+
+function getMaxBytes(spec) {
+  const countBits = spec.version < 10 ? 8 : 16;
+  return Math.floor((spec.dataCodewords * 8 - 4 - countBits) / 8);
 }
 
 function encodeData(bytes, spec) {
   const bits = [];
   appendBits(bits, 0b0100, 4);
-  appendBits(bits, bytes.length, 8);
+  appendBits(bits, bytes.length, spec.version < 10 ? 8 : 16);
   for (const byte of bytes) appendBits(bits, byte, 8);
 
   const capacityBits = spec.dataCodewords * 8;
@@ -63,6 +97,36 @@ function encodeData(bytes, spec) {
   return data;
 }
 
+function interleaveCodewords(data, spec) {
+  const blocks = [];
+  let offset = 0;
+
+  for (const size of spec.blocks) {
+    const blockData = data.slice(offset, offset + size);
+    blocks.push({
+      data: blockData,
+      ecc: reedSolomonRemainder(blockData, spec.eccCodewords),
+    });
+    offset += size;
+  }
+
+  const codewords = [];
+  const maxDataSize = Math.max(...blocks.map((block) => block.data.length));
+  for (let index = 0; index < maxDataSize; index += 1) {
+    for (const block of blocks) {
+      if (index < block.data.length) codewords.push(block.data[index]);
+    }
+  }
+
+  for (let index = 0; index < spec.eccCodewords; index += 1) {
+    for (const block of blocks) {
+      codewords.push(block.ecc[index]);
+    }
+  }
+
+  return codewords;
+}
+
 function createMatrix(spec) {
   const modules = Array.from({ length: spec.size }, () => Array(spec.size).fill(false));
   const reserved = Array.from({ length: spec.size }, () => Array(spec.size).fill(false));
@@ -74,6 +138,7 @@ function createMatrix(spec) {
   drawTiming(qr);
   drawAlignment(qr);
   reserveFormat(qr);
+  reserveVersion(qr);
   setFunction(qr, 8, spec.size - 8, true);
   return qr;
 }
@@ -104,14 +169,25 @@ function drawTiming(qr) {
 }
 
 function drawAlignment(qr) {
-  if (qr.version === 1) return;
-  const center = qr.size - 7;
-  for (let y = -2; y <= 2; y += 1) {
-    for (let x = -2; x <= 2; x += 1) {
-      const dark = Math.max(Math.abs(x), Math.abs(y)) !== 1;
-      setFunction(qr, center + x, center + y, dark);
+  for (const cy of qr.alignment) {
+    for (const cx of qr.alignment) {
+      if (isFinderOverlap(qr, cx, cy)) continue;
+      for (let y = -2; y <= 2; y += 1) {
+        for (let x = -2; x <= 2; x += 1) {
+          const dark = Math.max(Math.abs(x), Math.abs(y)) !== 1;
+          setFunction(qr, cx + x, cy + y, dark);
+        }
+      }
     }
   }
+}
+
+function isFinderOverlap(qr, cx, cy) {
+  const nearLeft = cx <= 8;
+  const nearRight = cx >= qr.size - 9;
+  const nearTop = cy <= 8;
+  const nearBottom = cy >= qr.size - 9;
+  return (nearLeft && nearTop) || (nearRight && nearTop) || (nearLeft && nearBottom);
 }
 
 function reserveFormat(qr) {
@@ -120,6 +196,15 @@ function reserveFormat(qr) {
     const b = i < 8 ? qr.size - 1 - i : i < 9 ? 15 - i : 14 - i;
     reserve(qr, 8, a);
     reserve(qr, b, 8);
+  }
+}
+
+function reserveVersion(qr) {
+  if (qr.version < 7) return;
+
+  for (let i = 0; i < 18; i += 1) {
+    reserve(qr, qr.size - 11 + (i % 3), Math.floor(i / 3));
+    reserve(qr, Math.floor(i / 3), qr.size - 11 + (i % 3));
   }
 }
 
@@ -173,6 +258,22 @@ function drawFormatBits(qr, mask) {
     setFunction(qr, b, 8, bit);
   }
   setFunction(qr, 8, qr.size - 8, true);
+}
+
+function drawVersionBits(qr) {
+  if (qr.version < 7) return;
+
+  let rem = qr.version;
+  for (let i = 0; i < 12; i += 1) {
+    rem = (rem << 1) ^ (((rem >> 11) & 1) * 0x1f25);
+  }
+  const bits = (qr.version << 12) | rem;
+
+  for (let i = 0; i < 18; i += 1) {
+    const bit = ((bits >> i) & 1) === 1;
+    setFunction(qr, qr.size - 11 + (i % 3), Math.floor(i / 3), bit);
+    setFunction(qr, Math.floor(i / 3), qr.size - 11 + (i % 3), bit);
+  }
 }
 
 function reedSolomonRemainder(data, degree) {

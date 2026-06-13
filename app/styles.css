@@ -847,6 +847,12 @@ main {
   display: block;
 }
 
+.qr-meta {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
 code {
   max-width: 100%;
   overflow-wrap: anywhere;

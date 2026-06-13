@@ -1,4 +1,4 @@
-import { renderQrSvg } from "../app/qr.js";
+import { getQrInfo, renderQrSvg } from "../app/qr.js";
 
 const CREATED_ON = yyMmDd(new Date());
 
@@ -88,6 +88,7 @@ const els = {
   qrType: document.querySelector("#qrType"),
   legacyMode: document.querySelector("#legacyMode"),
   qrOutput: document.querySelector("#qrOutput"),
+  qrMeta: document.querySelector("#qrMeta"),
   qrPayload: document.querySelector("#qrPayload"),
   makeQr: document.querySelector("#makeQr"),
   randomCurrent: document.querySelector("#randomCurrent"),
@@ -203,11 +204,28 @@ function updateTypeUi() {
 function makeQr() {
   const payload = buildPayload();
   els.qrPayload.textContent = payload;
+  renderQrMeta(payload);
   try {
     els.qrOutput.innerHTML = renderQrSvg(payload);
   } catch (error) {
     els.qrOutput.innerHTML = `<div class="result">${escapeHtml(error.message)}</div>`;
   }
+}
+
+function renderQrMeta(payload) {
+  const info = getQrInfo(payload);
+  const density =
+    info.version == null
+      ? "超出当前生成器"
+      : info.version <= 4
+        ? "低密度"
+        : info.version <= 7
+          ? "中密度"
+          : "高密度，小标签需实测";
+
+  els.qrMeta.textContent = info.fits
+    ? `${info.bytes} 字节 / QR V${info.version} / 上限 ${info.maxBytes} 字节 / ${density}`
+    : `${info.bytes} 字节 / 超出当前 ${info.maxSupportedBytes} 字节上限`;
 }
 
 function buildPayload() {
