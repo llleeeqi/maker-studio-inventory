@@ -10,7 +10,7 @@
 当前 Flutter 可安装 release APK：
 
 ```text
-studio-inventory-flutter-0.2.3-arm64-release.apk
+studio-inventory-flutter-0.2.4-arm64-release.apk
 ```
 
 早期 Capacitor debug APK：
@@ -21,7 +21,7 @@ studio-inventory-debug.apk
 
 这里说的“网页核心”不是让用户打开一个外网网页，而是把 HTML/JS/CSS 打包进 Android App。运行时是本机 app，UI 用 WebView 承载，扫码、文件、蓝牙走 Android 原生插件。
 
-Flutter 路线则不是 WebView 套壳，而是 Flutter Material 3 UI 加 Android 原生构建链路。高频手机交互优先放在 Flutter app 里推进。当前 0.2.3 分发包是 arm64 release APK，debug APK 不作为外发包。
+Flutter 路线则不是 WebView 套壳，而是 Flutter Material 3 UI 加 Android 原生构建链路。高频手机交互优先放在 Flutter app 里推进。当前 0.2.4 分发包是 arm64 release APK，debug APK 不作为外发包。
 
 ## 为什么用 Capacitor
 

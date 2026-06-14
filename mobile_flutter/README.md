@@ -5,21 +5,21 @@
 当前版本：
 
 ```text
-0.2.3+23
+0.2.4+24
 ```
 
 当前可安装 release 包在仓库根目录：
 
 ```text
-studio-inventory-flutter-0.2.3-arm64-release.apk
+studio-inventory-flutter-0.2.4-arm64-release.apk
 ```
 
 ## 当前功能
 
 - Material 3 四入口：扫码、库存、新增、流水。
-- `mobile_scanner` 页面内预览扫码。
-- 原生 ZXing 扫码兜底，避开部分机型的 CameraX / ML Kit 初始化异常。
-- 预览扫码、停止、手电筒按钮；相机启动异常会保留手动补录入口。
+- Android 原生 ZXing 扫码作为主扫码入口，避开部分机型的 CameraX / ML Kit 初始化异常。
+- `mobile_scanner` 页面内预览扫码保留为实验入口。
+- 扫码、预览扫码、停止、手电筒按钮；相机启动异常会保留手动补录入口。
 - 扫码后震动和系统点击声提示。
 - 手动 payload 补录底部弹窗。
 - 本地 demo 数据和 `SharedPreferences` 持久化。

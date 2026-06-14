@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const appVersion = '0.2.3+23';
+const appVersion = '0.2.4+24';
 
 void main() {
   runApp(const StudioInventoryApp());
@@ -275,10 +275,16 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
                 children: [
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: scannerBusy ? null : _startScanner,
-                      icon: const Icon(Icons.play_arrow),
-                      label: Text(scannerBusy ? '启动中' : '预览扫码'),
+                      onPressed: scannerBusy ? null : _scanWithNativeScanner,
+                      icon: const Icon(Icons.qr_code_scanner),
+                      label: Text(scannerBusy ? '启动中' : '扫码'),
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    tooltip: '预览扫码（实验）',
+                    onPressed: scannerBusy ? null : _startScanner,
+                    icon: const Icon(Icons.videocam),
                   ),
                   const SizedBox(width: 8),
                   IconButton.filledTonal(
@@ -292,13 +298,6 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
                     onPressed: scannerBusy ? null : _toggleTorch,
                     icon: const Icon(Icons.flashlight_on),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton.filledTonal(
-                    tooltip: '原生扫码',
-                    onPressed: scannerBusy ? null : _scanWithNativeScanner,
-                    icon: const Icon(Icons.document_scanner),
-                  ),
-                  const SizedBox(width: 8),
                   IconButton.filledTonal(
                     tooltip: '手动补录',
                     onPressed: _openManualInput,
@@ -403,7 +402,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
     if (scannerBusy) return;
     setState(() {
       scannerBusy = true;
-      message = '正在打开原生扫码...';
+      message = '正在打开扫码...';
     });
     _appendDiagnostic('native_scan.start.request', _scannerStateFields());
     try {
@@ -2810,20 +2809,20 @@ class _CatalogScannerSheetState extends State<CatalogScannerSheet>
           Row(
             children: [
               Expanded(child: Text(status)),
-              TextButton.icon(
+              FilledButton.icon(
+                onPressed: scannerBusy ? null : _scanWithNativeScanner,
+                icon: const Icon(Icons.qr_code_scanner),
+                label: Text(scannerBusy ? '启动中' : '扫码'),
+              ),
+              IconButton.filledTonal(
+                tooltip: '预览扫码（实验）',
                 onPressed: scannerBusy ? null : _startScanner,
-                icon: const Icon(Icons.play_arrow),
-                label: Text(scannerBusy ? '启动中' : '预览扫码'),
+                icon: const Icon(Icons.videocam),
               ),
               IconButton.filledTonal(
                 tooltip: '手电筒',
                 onPressed: scannerBusy ? null : _toggleTorch,
                 icon: const Icon(Icons.flashlight_on),
-              ),
-              IconButton.filledTonal(
-                tooltip: '原生扫码',
-                onPressed: scannerBusy ? null : _scanWithNativeScanner,
-                icon: const Icon(Icons.document_scanner),
               ),
             ],
           ),
@@ -2880,7 +2879,7 @@ class _CatalogScannerSheetState extends State<CatalogScannerSheet>
     if (scannerBusy) return;
     setState(() {
       scannerBusy = true;
-      status = '正在打开原生扫码...';
+      status = '正在打开扫码...';
     });
     try {
       await _stopScannerForNativeLaunch();

@@ -11,21 +11,21 @@ mobile_flutter/
 当前可安装 release 包：
 
 ```text
-studio-inventory-flutter-0.2.3-arm64-release.apk
+studio-inventory-flutter-0.2.4-arm64-release.apk
 ```
 
 APK 信息：
 
 ```text
 packageName: studio.inventory.mobile
-versionName: 0.2.3
-versionCode: 23
+versionName: 0.2.4
+versionCode: 24
 minSdk: 24
 targetSdk: 36
 native-code: arm64-v8a
 签名: debug key, v2 signature verified
 文件大小: 24M on disk / 24.2MB build output
-SHA-256: fb469580cce1e17635fe8f4300c4b9ed79fb92635511e1784827583b616d6383
+SHA-256: b57e4b41e766bb23b5f782340348c30d0f2ce70898da6caca129c4b113d8a776
 ```
 
 ## App 结构
@@ -39,7 +39,7 @@ SHA-256: fb469580cce1e17635fe8f4300c4b9ed79fb92635511e1784827583b616d6383
 扫码页：
 
 - 小相机预览框。
-- 预览扫码、原生扫码、停止、手电筒按钮。
+- 扫码、预览扫码（实验）、停止、手电筒按钮。
 - 扫码成功后触发震动和系统点击声。
 - 手动补录放到底部弹窗，作为测试和相机异常兜底，不占主流程。
 - 扫 `spool:` / `part:` / `weight:` / `location:` 后由状态机自动判断动作。
@@ -98,6 +98,16 @@ Android 原生构建链路
 - 复现报错后可以直接点“复制”，把设备信息和扫码错误事件复制出来。
 - 日志包含 app 版本、Android SDK / Release / Fingerprint、品牌型号、相机 feature、相机权限、scanner state、`MobileScannerException` / `PlatformException` 的 code、message、details 和 stack trace。
 - Android 原生侧通过 MethodChannel 暴露 `diagnostics`，只读取设备和权限信息，不写库存数据。
+
+## 0.2.4 扫码入口调整
+
+小米 17 / Android 16 日志显示：权限和相机 feature 正常，失败发生在 `mobile_scanner` 内嵌预览链路，且在拿到相机列表前就抛出 `genericError`。
+
+因此 0.2.4 调整入口优先级：
+
+- “扫码”主按钮改为 Android 原生 ZXing 扫码。
+- `mobile_scanner` 页面内预览只保留为“预览扫码（实验）”，用于对比和继续排查。
+- 主流程不再要求用户先打开内嵌预览。
 
 ## APK 体积说明
 
