@@ -55,13 +55,13 @@ The first version has the core loop working:
 - QR label preview.
 - Transaction log.
 - JSON snapshot import, export, merge, and merge preview.
-- Local Web version, Capacitor Android shell, and Flutter Android 0.2.2 mobile package.
+- Local Web version, Capacitor Android shell, and Flutter Android 0.2.3 mobile package.
 
 Current installable Flutter APK:
 
-[studio-inventory-flutter-0.2.2-arm64-release.apk](https://github.com/llleeeqi/maker-studio-inventory/releases/download/v0.2.2/studio-inventory-flutter-0.2.2-arm64-release.apk)
+[studio-inventory-flutter-0.2.3-arm64-release.apk](https://github.com/llleeeqi/maker-studio-inventory/releases/download/v0.2.3/studio-inventory-flutter-0.2.3-arm64-release.apk)
 
-This package is built with Flutter, Dart, Material 3, and the native Android build chain. Its package name is `studio.inventory.mobile`, version `0.2.2`. The distributable APK is an arm64 release build; debug APKs are only for local testing. SHA-256: `9dc285cfaf57abe5caab7b3fc41b53b55dc31226d557622c166144da9ea4df90`.
+This package is built with Flutter, Dart, Material 3, and the native Android build chain. Its package name is `studio.inventory.mobile`, version `0.2.3`. The distributable APK is an arm64 release build; debug APKs are only for local testing. SHA-256: `fb469580cce1e17635fe8f4300c4b9ed79fb92635511e1784827583b616d6383`.
 
 Recommended long-term payload protocol:
 

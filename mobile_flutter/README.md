@@ -5,13 +5,13 @@
 当前版本：
 
 ```text
-0.2.2+22
+0.2.3+23
 ```
 
 当前可安装 release 包在仓库根目录：
 
 ```text
-studio-inventory-flutter-0.2.2-arm64-release.apk
+studio-inventory-flutter-0.2.3-arm64-release.apk
 ```
 
 ## 当前功能

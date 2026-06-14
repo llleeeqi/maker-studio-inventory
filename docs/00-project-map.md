@@ -59,10 +59,10 @@
 | `test/widget_test.dart` | 首页和底部导航的 widget 冒烟测试 |
 | `pubspec.yaml` | Flutter 依赖、版本号和 app 元数据 |
 
-当前 0.2.2 手机安装包已经生成：
+当前 0.2.3 手机安装包已经生成：
 
 ```text
-studio-inventory-flutter-0.2.2-arm64-release.apk
+studio-inventory-flutter-0.2.3-arm64-release.apk
 ```
 
 这条路线的原则：手机端高频交互先用 Flutter Material 3 做成真 app；扫码、相机、震动、声音、手电筒等能力用插件或 Android 原生链路完成；库存规则后续再和 `core/` 做更严格的共享或协议对齐。

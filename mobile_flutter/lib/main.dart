@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+const appVersion = '0.2.3+23';
+
 void main() {
   runApp(const StudioInventoryApp());
 }
@@ -17,6 +19,13 @@ class NativeScanner {
 
   static Future<String?> scanQr() {
     return _channel.invokeMethod<String>('scanQr');
+  }
+
+  static Future<Map<String, Object?>> diagnostics() async {
+    final result = await _channel.invokeMapMethod<String, Object?>(
+      'diagnostics',
+    );
+    return Map<String, Object?>.from(result ?? const {});
   }
 }
 
@@ -136,6 +145,10 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   String lastPayload = '';
   DateTime lastPayloadAt = DateTime.fromMillisecondsSinceEpoch(0);
   bool scannerBusy = false;
+  final List<String> diagnostics = [];
+  Map<String, Object?> nativeDiagnostics = const {};
+  String lastDiagnosticKey = '';
+  DateTime lastDiagnosticAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   void initState() {
@@ -148,6 +161,8 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       facing: CameraFacing.back,
     );
     scanner.addListener(_handleScannerState);
+    _appendDiagnostic('scan_page.init');
+    unawaited(_loadNativeDiagnostics());
   }
 
   @override
@@ -213,14 +228,25 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
                         controller: scanner,
                         fit: BoxFit.cover,
                         onDetect: _onDetect,
-                        errorBuilder: (context, error) => Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text(
-                              '相机不可用：${error.errorDetails?.message ?? error.errorCode.name}',
+                        errorBuilder: (context, error) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) return;
+                            _recordScannerException(
+                              'inline_preview.error_builder',
+                              error,
+                            );
+                          });
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Text(
+                                _cameraErrorText(error),
+                                maxLines: 4,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
                       IgnorePointer(
                         child: Center(
@@ -282,6 +308,13 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
               ),
               const SizedBox(height: 8),
               _ResultCard(text: message, compact: compact),
+              const SizedBox(height: 8),
+              _DiagnosticCard(
+                lines: diagnostics,
+                onCopy: _copyDiagnostics,
+                onClear: _clearDiagnostics,
+                compact: compact,
+              ),
               if (active != null) ...[
                 const SizedBox(height: 8),
                 _ActiveEntryCard(
@@ -344,6 +377,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       scannerBusy = true;
       message = '正在打开相机...';
     });
+    _appendDiagnostic('inline_preview.start.request', _scannerStateFields());
     try {
       await scanner.start(cameraDirection: CameraFacing.back);
       final error = scanner.value.error;
@@ -351,8 +385,14 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       setState(() {
         message = error == null ? '扫码中：对准二维码。' : _cameraErrorText(error);
       });
-    } catch (error) {
+      if (error == null) {
+        _appendDiagnostic('inline_preview.start.ok', _scannerStateFields());
+      } else {
+        _recordScannerException('inline_preview.start.state_error', error);
+      }
+    } catch (error, stackTrace) {
       if (!mounted) return;
+      _recordError('inline_preview.start.catch', error, stackTrace);
       setState(() => message = _cameraErrorText(error));
     } finally {
       if (mounted) setState(() => scannerBusy = false);
@@ -365,16 +405,20 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       scannerBusy = true;
       message = '正在打开原生扫码...';
     });
+    _appendDiagnostic('native_scan.start.request', _scannerStateFields());
     try {
       await _stopScannerForNativeLaunch();
       final payload = await NativeScanner.scanQr();
       if (!mounted) return;
       if (payload == null || payload.trim().isEmpty) {
+        _appendDiagnostic('native_scan.cancel');
         setState(() => message = '已取消扫码。');
         return;
       }
+      _appendDiagnostic('native_scan.result', {'bytes': payload.length});
       _handlePayload(payload);
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _recordError('native_scan.catch', error, stackTrace);
       if (mounted) setState(() => message = _cameraErrorText(error));
     } finally {
       if (mounted) setState(() => scannerBusy = false);
@@ -392,12 +436,15 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   Future<void> _stopScanner({bool showMessage = true}) async {
     if (scannerBusy) return;
     setState(() => scannerBusy = true);
+    _appendDiagnostic('inline_preview.stop.request', _scannerStateFields());
     try {
       await scanner.stop();
+      _appendDiagnostic('inline_preview.stop.ok', _scannerStateFields());
       if (mounted && showMessage) {
         setState(() => message = '扫码已停止。');
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _recordError('inline_preview.stop.catch', error, stackTrace);
       if (mounted) setState(() => message = _cameraErrorText(error));
     } finally {
       if (mounted) setState(() => scannerBusy = false);
@@ -406,12 +453,15 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
 
   Future<void> _toggleTorch() async {
     if (scannerBusy || !scanner.value.isRunning) {
-      setState(() => message = '先点“开始扫码”，相机启动后才能打开手电筒。');
+      setState(() => message = '先点“预览扫码”，相机启动后才能打开手电筒。');
       return;
     }
+    _appendDiagnostic('torch.toggle.request', _scannerStateFields());
     try {
       await scanner.toggleTorch();
-    } catch (error) {
+      _appendDiagnostic('torch.toggle.ok', _scannerStateFields());
+    } catch (error, stackTrace) {
+      _recordError('torch.toggle.catch', error, stackTrace);
       if (mounted) setState(() => message = _cameraErrorText(error));
     }
   }
@@ -419,6 +469,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   void _handleScannerState() {
     final error = scanner.value.error;
     if (error == null || !mounted) return;
+    _recordScannerException('inline_preview.listener_error', error);
     setState(() => message = _cameraErrorText(error));
   }
 
@@ -427,6 +478,126 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
     HapticFeedback.mediumImpact();
     SystemSound.play(SystemSoundType.click);
     setState(() => message = result);
+  }
+
+  Future<void> _loadNativeDiagnostics() async {
+    try {
+      final info = await NativeScanner.diagnostics();
+      if (!mounted) return;
+      setState(() => nativeDiagnostics = info);
+      _appendDiagnostic('native.diagnostics.loaded', info);
+    } catch (error, stackTrace) {
+      _recordError('native.diagnostics.catch', error, stackTrace);
+    }
+  }
+
+  void _recordScannerException(
+    String event,
+    MobileScannerException error, [
+    StackTrace? stackTrace,
+  ]) {
+    _recordError(event, error, stackTrace);
+  }
+
+  void _recordError(String event, Object error, StackTrace? stackTrace) {
+    final key = '$event|${_errorSummary(error)}';
+    final now = DateTime.now();
+    if (key == lastDiagnosticKey &&
+        now.difference(lastDiagnosticAt).inMilliseconds < 1200) {
+      return;
+    }
+    lastDiagnosticKey = key;
+    lastDiagnosticAt = now;
+    _appendDiagnostic(event, {
+      'error': _errorFields(error),
+      'scanner': _scannerStateFields(),
+      if (stackTrace != null) 'stack': _trimStack(stackTrace),
+    });
+  }
+
+  void _appendDiagnostic(
+    String event, [
+    Map<String, Object?> fields = const {},
+  ]) {
+    final data = <String, Object?>{
+      'ts': DateTime.now().toUtc().toIso8601String(),
+      'event': event,
+      'appVersion': appVersion,
+      ...fields,
+    };
+    final line = const JsonEncoder.withIndent('  ').convert(_jsonSafe(data));
+    if (!mounted) {
+      diagnostics.insert(0, line);
+      if (diagnostics.length > 24) {
+        diagnostics.removeRange(24, diagnostics.length);
+      }
+      return;
+    }
+    setState(() {
+      diagnostics.insert(0, line);
+      if (diagnostics.length > 24) {
+        diagnostics.removeRange(24, diagnostics.length);
+      }
+    });
+  }
+
+  Map<String, Object?> _scannerStateFields() {
+    final value = scanner.value;
+    return {
+      'isInitialized': value.isInitialized,
+      'isStarting': value.isStarting,
+      'isRunning': value.isRunning,
+      'hasCameraPermission': value.hasCameraPermission,
+      'availableCameras': value.availableCameras,
+      'cameraDirection': value.cameraDirection.name,
+      'cameraLensType': value.cameraLensType.name,
+      'torchState': value.torchState.name,
+      'deviceOrientation': value.deviceOrientation.name,
+      'size': '${value.size.width}x${value.size.height}',
+      'zoomScale': value.zoomScale,
+      if (value.error != null) 'stateError': _errorFields(value.error!),
+    };
+  }
+
+  Future<void> _copyDiagnostics() async {
+    final text = _diagnosticText();
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('诊断日志已复制')));
+  }
+
+  void _clearDiagnostics() {
+    setState(() {
+      diagnostics.clear();
+      lastDiagnosticKey = '';
+    });
+    _appendDiagnostic('diagnostics.cleared');
+  }
+
+  String _diagnosticText() {
+    final buffer = StringBuffer()
+      ..writeln('Studio Inventory camera diagnostics')
+      ..writeln('appVersion=$appVersion')
+      ..writeln('generatedAt=${DateTime.now().toUtc().toIso8601String()}');
+    if (nativeDiagnostics.isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln('[native]');
+      nativeDiagnostics.forEach((key, value) {
+        buffer.writeln('$key=${_stringifyDiagnosticValue(value)}');
+      });
+    }
+    buffer
+      ..writeln()
+      ..writeln('[events]');
+    for (final line in diagnostics.reversed) {
+      buffer
+        ..writeln(line)
+        ..writeln();
+    }
+    return buffer.toString();
   }
 
   Future<void> _openManualInput() async {
@@ -2404,6 +2575,65 @@ class _ResultCard extends StatelessWidget {
   }
 }
 
+class _DiagnosticCard extends StatelessWidget {
+  const _DiagnosticCard({
+    required this.lines,
+    required this.onCopy,
+    required this.onClear,
+    this.compact = false,
+  });
+
+  final List<String> lines;
+  final VoidCallback onCopy;
+  final VoidCallback onClear;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final latest = lines.isEmpty
+        ? '暂无相机诊断。复现报错后点复制。'
+        : lines.first.replaceAll('\n', ' ');
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: EdgeInsets.all(compact ? 8 : 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.bug_report, color: theme.colorScheme.secondary),
+                const SizedBox(width: 8),
+                const Expanded(child: Text('相机诊断日志')),
+                TextButton.icon(
+                  onPressed: onCopy,
+                  icon: const Icon(Icons.content_copy, size: 18),
+                  label: const Text('复制'),
+                ),
+                IconButton(
+                  tooltip: '清空诊断',
+                  onPressed: onClear,
+                  icon: const Icon(Icons.delete_outline),
+                ),
+              ],
+            ),
+            Text(
+              latest,
+              maxLines: compact ? 2 : 3,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontFamily: 'monospace',
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _StockBadge extends StatelessWidget {
   const _StockBadge({required this.entry});
 
@@ -2693,7 +2923,7 @@ class _CatalogScannerSheetState extends State<CatalogScannerSheet>
 
   Future<void> _toggleTorch() async {
     if (scannerBusy || !scanner.value.isRunning) {
-      setState(() => status = '先点“开始扫码”，相机启动后才能打开手电筒。');
+      setState(() => status = '先点“预览扫码”，相机启动后才能打开手电筒。');
       return;
     }
     try {
@@ -2722,6 +2952,65 @@ String _cameraErrorText(Object error) {
     return '相机不可用：${error.message ?? error.code}';
   }
   return '相机不可用：$error';
+}
+
+String _errorSummary(Object error) {
+  if (error is MobileScannerException) {
+    return '${error.errorCode.name}|${error.errorDetails?.code}|${error.errorDetails?.message}|${error.errorDetails?.details}';
+  }
+  if (error is PlatformException) {
+    return '${error.code}|${error.message}|${error.details}';
+  }
+  return error.toString();
+}
+
+Map<String, Object?> _errorFields(Object error) {
+  if (error is MobileScannerException) {
+    return {
+      'type': 'MobileScannerException',
+      'errorCode': error.errorCode.name,
+      'detailsCode': error.errorDetails?.code,
+      'message': error.errorDetails?.message,
+      'details': _stringifyDiagnosticValue(error.errorDetails?.details),
+      'toString': error.toString(),
+    };
+  }
+  if (error is PlatformException) {
+    return {
+      'type': 'PlatformException',
+      'code': error.code,
+      'message': error.message,
+      'details': _stringifyDiagnosticValue(error.details),
+      'stacktrace': error.stacktrace,
+      'toString': error.toString(),
+    };
+  }
+  return {'type': error.runtimeType.toString(), 'toString': error.toString()};
+}
+
+String _trimStack(StackTrace stackTrace) {
+  return stackTrace.toString().split('\n').take(12).join('\n');
+}
+
+Object? _jsonSafe(Object? value) {
+  if (value == null || value is String || value is num || value is bool) {
+    return value;
+  }
+  if (value is DateTime) return value.toIso8601String();
+  if (value is Iterable) return value.map(_jsonSafe).toList();
+  if (value is Map) {
+    return value.map(
+      (key, child) => MapEntry(key.toString(), _jsonSafe(child)),
+    );
+  }
+  return value.toString();
+}
+
+String _stringifyDiagnosticValue(Object? value) {
+  if (value == null) return '';
+  final safe = _jsonSafe(value);
+  if (safe is String) return safe;
+  return jsonEncode(safe);
 }
 
 String buildMsiPayload(Map<String, String> fields) {

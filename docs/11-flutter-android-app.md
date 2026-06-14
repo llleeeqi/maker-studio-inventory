@@ -11,21 +11,21 @@ mobile_flutter/
 当前可安装 release 包：
 
 ```text
-studio-inventory-flutter-0.2.2-arm64-release.apk
+studio-inventory-flutter-0.2.3-arm64-release.apk
 ```
 
 APK 信息：
 
 ```text
 packageName: studio.inventory.mobile
-versionName: 0.2.2
-versionCode: 22
+versionName: 0.2.3
+versionCode: 23
 minSdk: 24
 targetSdk: 36
 native-code: arm64-v8a
 签名: debug key, v2 signature verified
 文件大小: 24M on disk / 24.2MB build output
-SHA-256: 9dc285cfaf57abe5caab7b3fc41b53b55dc31226d557622c166144da9ea4df90
+SHA-256: fb469580cce1e17635fe8f4300c4b9ed79fb92635511e1784827583b616d6383
 ```
 
 ## App 结构
@@ -89,6 +89,15 @@ Android 原生构建链路
 - 主扫码页和新增页扫码弹窗都改为显式启动，不在弹窗创建时自动抢占相机。
 - `start / stop / toggleTorch` 统一捕获异常，失败后继续保留手动补录入口。
 - app 进入后台、暂停或隐藏时主动停止相机，避免 CameraX 生命周期残留。
+
+## 0.2.3 相机诊断版
+
+0.2.3 不是最终修复版，目标是收集小米 17 / Android 16 上的相机初始化证据：
+
+- 扫码页增加“相机诊断日志”卡片。
+- 复现报错后可以直接点“复制”，把设备信息和扫码错误事件复制出来。
+- 日志包含 app 版本、Android SDK / Release / Fingerprint、品牌型号、相机 feature、相机权限、scanner state、`MobileScannerException` / `PlatformException` 的 code、message、details 和 stack trace。
+- Android 原生侧通过 MethodChannel 暴露 `diagnostics`，只读取设备和权限信息，不写库存数据。
 
 ## APK 体积说明
 

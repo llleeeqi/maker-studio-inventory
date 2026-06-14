@@ -1,5 +1,8 @@
 package studio.inventory.mobile
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -16,6 +19,7 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "scanQr" -> startQrScan(result)
+                    "diagnostics" -> result.success(buildDiagnostics())
                     else -> result.notImplemented()
                 }
             }
@@ -53,5 +57,42 @@ class MainActivity : FlutterActivity() {
             return
         }
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    private fun buildDiagnostics(): Map<String, Any?> {
+        val packageInfo = packageManager.getPackageInfo(packageName, 0)
+        val cameraPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+        return mapOf(
+            "packageName" to packageName,
+            "versionName" to packageInfo.versionName,
+            "versionCode" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                packageInfo.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.versionCode.toLong()
+            },
+            "manufacturer" to Build.MANUFACTURER,
+            "brand" to Build.BRAND,
+            "model" to Build.MODEL,
+            "device" to Build.DEVICE,
+            "product" to Build.PRODUCT,
+            "hardware" to Build.HARDWARE,
+            "board" to Build.BOARD,
+            "androidSdk" to Build.VERSION.SDK_INT,
+            "androidRelease" to Build.VERSION.RELEASE,
+            "androidCodename" to Build.VERSION.CODENAME,
+            "androidIncremental" to Build.VERSION.INCREMENTAL,
+            "fingerprint" to Build.FINGERPRINT,
+            "supportedAbis" to Build.SUPPORTED_ABIS.joinToString(","),
+            "cameraPermissionGranted" to cameraPermission,
+            "featureCamera" to packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA),
+            "featureCameraAny" to packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY),
+            "featureAutofocus" to packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_AUTOFOCUS),
+            "featureFlash" to packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH)
+        )
     }
 }
