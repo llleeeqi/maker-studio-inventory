@@ -14,7 +14,8 @@ void main() {
     expect(find.text('库存'), findsOneWidget);
     expect(find.text('新增'), findsOneWidget);
     expect(find.text('流水'), findsOneWidget);
-    expect(find.text('开始扫码'), findsOneWidget);
+    expect(find.text('预览扫码'), findsOneWidget);
+    expect(find.byTooltip('原生扫码'), findsOneWidget);
   });
 
   test('parses readable msi spool payload', () {

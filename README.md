@@ -55,13 +55,13 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 - 标签二维码预览。
 - 流水记录。
 - JSON 快照导入、导出、合并和预览。
-- Web 检测版、Capacitor Android 壳和 Flutter Android 0.2.1 手机包。
+- Web 检测版、Capacitor Android 壳和 Flutter Android 0.2.2 手机包。
 
 当前可安装 Flutter APK：
 
-[studio-inventory-flutter-0.2.1-arm64-release.apk](./studio-inventory-flutter-0.2.1-arm64-release.apk)
+[studio-inventory-flutter-0.2.2-arm64-release.apk](https://github.com/llleeeqi/maker-studio-inventory/releases/download/v0.2.2/studio-inventory-flutter-0.2.2-arm64-release.apk)
 
-这个包使用 Flutter / Dart / Material 3 编写，Android 原生构建链路输出，包名为 `studio.inventory.mobile`，版本为 `0.2.1`。当前分发包是 arm64 release APK；debug APK 只用于本地调试。SHA-256：`6674f9cf72a6fe65b3ef171dbf289b5f79e2380470b9fe05928c8e42ff4add3a`。
+这个包使用 Flutter / Dart / Material 3 编写，Android 原生构建链路输出，包名为 `studio.inventory.mobile`，版本为 `0.2.2`。当前分发包是 arm64 release APK；debug APK 只用于本地调试。SHA-256：`9dc285cfaf57abe5caab7b3fc41b53b55dc31226d557622c166144da9ea4df90`。
 
 长期推荐扫码协议：
 

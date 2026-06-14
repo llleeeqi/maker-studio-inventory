@@ -2,7 +2,7 @@
 
 ## 当前结论
 
-第一版正式 app 已经可以作为本地检测版使用。Web 入口是 `app/`，早期 Capacitor APK 是 `studio-inventory-debug.apk`；新的 Flutter 手机 release 包是 `studio-inventory-flutter-0.2.1-arm64-release.apk`。Flutter 版本使用 Material 3 和 Android 原生构建链路，第一屏是扫码工作台。
+第一版正式 app 已经可以作为本地检测版使用。Web 入口是 `app/`，早期 Capacitor APK 是 `studio-inventory-debug.apk`；新的 Flutter 手机 release 包是 `studio-inventory-flutter-0.2.2-arm64-release.apk`。Flutter 版本使用 Material 3 和 Android 原生构建链路，第一屏是扫码工作台。
 
 ## 已接通的用户流程
 
@@ -36,7 +36,7 @@
 APK：
 
 ```text
-studio-inventory-flutter-0.2.1-arm64-release.apk
+studio-inventory-flutter-0.2.2-arm64-release.apk
 studio-inventory-debug.apk
 ```
 

@@ -11,21 +11,21 @@ mobile_flutter/
 当前可安装 release 包：
 
 ```text
-studio-inventory-flutter-0.2.1-arm64-release.apk
+studio-inventory-flutter-0.2.2-arm64-release.apk
 ```
 
 APK 信息：
 
 ```text
 packageName: studio.inventory.mobile
-versionName: 0.2.1
-versionCode: 21
+versionName: 0.2.2
+versionCode: 22
 minSdk: 24
 targetSdk: 36
 native-code: arm64-v8a
 签名: debug key, v2 signature verified
-文件大小: 23M on disk / 24.1MB build output
-SHA-256: 6674f9cf72a6fe65b3ef171dbf289b5f79e2380470b9fe05928c8e42ff4add3a
+文件大小: 24M on disk / 24.2MB build output
+SHA-256: 9dc285cfaf57abe5caab7b3fc41b53b55dc31226d557622c166144da9ea4df90
 ```
 
 ## App 结构
@@ -39,7 +39,7 @@ SHA-256: 6674f9cf72a6fe65b3ef171dbf289b5f79e2380470b9fe05928c8e42ff4add3a
 扫码页：
 
 - 小相机预览框。
-- 开始扫码、停止、手电筒按钮。
+- 预览扫码、原生扫码、停止、手电筒按钮。
 - 扫码成功后触发震动和系统点击声。
 - 手动补录放到底部弹窗，作为测试和相机异常兜底，不占主流程。
 - 扫 `spool:` / `part:` / `weight:` / `location:` 后由状态机自动判断动作。
@@ -77,14 +77,15 @@ Android 原生构建链路
 库存状态机
 ```
 
-当前扫码插件是 `mobile_scanner`。构建时会出现一个未来兼容性警告：该插件仍使用 Kotlin Gradle Plugin。当前不影响 0.2.1 release APK 生成，但后续升级 Flutter 或插件时要重点复查。
+当前页面内预览扫码仍使用 `mobile_scanner`。为了避开部分小米机型在 CameraX / ML Kit 初始化时抛空指针，0.2.2 增加了 Android 原生 ZXing 扫码 Activity 作为兜底入口。
 
-## 0.2.1 相机修复
+## 0.2.2 相机修复
 
-0.2.1 针对部分手机授权后相机初始化报空指针的问题做了防护：
+0.2.2 针对小米手机上 0.2.1 授权后仍提示 `Attempt to invoke virtual method ... on a null object reference` 的问题继续处理：
 
 - Manifest 增加 `android.hardware.camera` 和 `android.hardware.camera.autofocus` 的 optional feature 声明。
-- 扫码控制器固定使用后置 normal 镜头，避免多摄设备默认 `any` 镜头选择不稳定。
+- 页面内预览扫码只指定后置摄像头，不再强制选择 `normal` 镜头，避免多摄机型镜头选择异常。
+- 新增“原生扫码”按钮，通过 Android MethodChannel 打开 ZXing 扫码 Activity，绕开 `mobile_scanner` 的 CameraX / ML Kit 预览链路。
 - 主扫码页和新增页扫码弹窗都改为显式启动，不在弹窗创建时自动抢占相机。
 - `start / stop / toggleTorch` 统一捕获异常，失败后继续保留手动补录入口。
 - app 进入后台、暂停或隐藏时主动停止相机，避免 CameraX 生命周期残留。

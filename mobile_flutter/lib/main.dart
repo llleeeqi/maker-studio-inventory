@@ -10,6 +10,16 @@ void main() {
   runApp(const StudioInventoryApp());
 }
 
+class NativeScanner {
+  static const MethodChannel _channel = MethodChannel(
+    'studio.inventory.mobile/native_scanner',
+  );
+
+  static Future<String?> scanQr() {
+    return _channel.invokeMethod<String>('scanQr');
+  }
+}
+
 class StudioInventoryApp extends StatelessWidget {
   const StudioInventoryApp({super.key});
 
@@ -135,7 +145,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       autoStart: false,
       detectionSpeed: DetectionSpeed.normal,
       formats: const [BarcodeFormat.qrCode],
-      lensType: CameraLensType.normal,
+      facing: CameraFacing.back,
     );
     scanner.addListener(_handleScannerState);
   }
@@ -241,7 +251,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
                     child: FilledButton.icon(
                       onPressed: scannerBusy ? null : _startScanner,
                       icon: const Icon(Icons.play_arrow),
-                      label: Text(scannerBusy ? '启动中' : '开始扫码'),
+                      label: Text(scannerBusy ? '启动中' : '预览扫码'),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -255,6 +265,12 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
                     tooltip: '手电筒',
                     onPressed: scannerBusy ? null : _toggleTorch,
                     icon: const Icon(Icons.flashlight_on),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    tooltip: '原生扫码',
+                    onPressed: scannerBusy ? null : _scanWithNativeScanner,
+                    icon: const Icon(Icons.document_scanner),
                   ),
                   const SizedBox(width: 8),
                   IconButton.filledTonal(
@@ -329,10 +345,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       message = '正在打开相机...';
     });
     try {
-      await scanner.start(
-        cameraDirection: CameraFacing.back,
-        cameraLensType: CameraLensType.normal,
-      );
+      await scanner.start(cameraDirection: CameraFacing.back);
       final error = scanner.value.error;
       if (!mounted) return;
       setState(() {
@@ -343,6 +356,36 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       setState(() => message = _cameraErrorText(error));
     } finally {
       if (mounted) setState(() => scannerBusy = false);
+    }
+  }
+
+  Future<void> _scanWithNativeScanner() async {
+    if (scannerBusy) return;
+    setState(() {
+      scannerBusy = true;
+      message = '正在打开原生扫码...';
+    });
+    try {
+      await _stopScannerForNativeLaunch();
+      final payload = await NativeScanner.scanQr();
+      if (!mounted) return;
+      if (payload == null || payload.trim().isEmpty) {
+        setState(() => message = '已取消扫码。');
+        return;
+      }
+      _handlePayload(payload);
+    } catch (error) {
+      if (mounted) setState(() => message = _cameraErrorText(error));
+    } finally {
+      if (mounted) setState(() => scannerBusy = false);
+    }
+  }
+
+  Future<void> _stopScannerForNativeLaunch() async {
+    try {
+      if (scanner.value.isRunning) await scanner.stop();
+    } catch (_) {
+      // Launching the native scanner is still useful if inline stop fails.
     }
   }
 
@@ -2480,7 +2523,7 @@ class _CatalogScannerSheetState extends State<CatalogScannerSheet>
       autoStart: false,
       detectionSpeed: DetectionSpeed.normal,
       formats: const [BarcodeFormat.qrCode],
-      lensType: CameraLensType.normal,
+      facing: CameraFacing.back,
     );
     scanner.addListener(_handleScannerState);
   }
@@ -2540,12 +2583,17 @@ class _CatalogScannerSheetState extends State<CatalogScannerSheet>
               TextButton.icon(
                 onPressed: scannerBusy ? null : _startScanner,
                 icon: const Icon(Icons.play_arrow),
-                label: Text(scannerBusy ? '启动中' : '开始扫码'),
+                label: Text(scannerBusy ? '启动中' : '预览扫码'),
               ),
               IconButton.filledTonal(
                 tooltip: '手电筒',
                 onPressed: scannerBusy ? null : _toggleTorch,
                 icon: const Icon(Icons.flashlight_on),
+              ),
+              IconButton.filledTonal(
+                tooltip: '原生扫码',
+                onPressed: scannerBusy ? null : _scanWithNativeScanner,
+                icon: const Icon(Icons.document_scanner),
               ),
             ],
           ),
@@ -2585,10 +2633,7 @@ class _CatalogScannerSheetState extends State<CatalogScannerSheet>
       status = '正在打开相机...';
     });
     try {
-      await scanner.start(
-        cameraDirection: CameraFacing.back,
-        cameraLensType: CameraLensType.normal,
-      );
+      await scanner.start(cameraDirection: CameraFacing.back);
       final error = scanner.value.error;
       if (!mounted) return;
       setState(() {
@@ -2598,6 +2643,36 @@ class _CatalogScannerSheetState extends State<CatalogScannerSheet>
       if (mounted) setState(() => status = _cameraErrorText(error));
     } finally {
       if (mounted) setState(() => scannerBusy = false);
+    }
+  }
+
+  Future<void> _scanWithNativeScanner() async {
+    if (scannerBusy) return;
+    setState(() {
+      scannerBusy = true;
+      status = '正在打开原生扫码...';
+    });
+    try {
+      await _stopScannerForNativeLaunch();
+      final payload = await NativeScanner.scanQr();
+      if (!mounted) return;
+      if (payload == null || payload.trim().isEmpty) {
+        setState(() => status = '已取消扫码。');
+        return;
+      }
+      _handle(payload);
+    } catch (error) {
+      if (mounted) setState(() => status = _cameraErrorText(error));
+    } finally {
+      if (mounted) setState(() => scannerBusy = false);
+    }
+  }
+
+  Future<void> _stopScannerForNativeLaunch() async {
+    try {
+      if (scanner.value.isRunning) await scanner.stop();
+    } catch (_) {
+      // Launching the native scanner is still useful if inline stop fails.
     }
   }
 
