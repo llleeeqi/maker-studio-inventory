@@ -6,6 +6,11 @@ android/build/
 android/app/build/
 android/local.properties
 
+mobile_android/.gradle/
+mobile_android/build/
+mobile_android/app/build/
+mobile_android/local.properties
+
 *.apk
 *.ap_
 *.aab

@@ -1,19 +1,17 @@
 # 文档索引
 
-这个目录用于给后续继续开发留记忆点。每个文档只回答一类问题，避免以后翻一整个大纲。
+这个目录用于给后续继续开发留记忆点。当前主线是原生 Android 第一版，不再沿用 Web/Capacitor 或 Flutter 手机路线作为开发方向。
 
 | 文档 | 用途 |
 |---|---|
-| [00-project-map.md](./00-project-map.md) | 项目文件地图：哪个文件负责什么，为什么这么分 |
-| [01-qr-input-workflows.md](./01-qr-input-workflows.md) | 二维码输入流程：查库存、盘点、绑定库位 |
-| [02-android-apk.md](./02-android-apk.md) | Android APK 路线：网页核心怎么变成本地 app |
-| [03-data-and-sync.md](./03-data-and-sync.md) | 本地数据和 WebDAV 同步设计 |
-| [04-next-steps.md](./04-next-steps.md) | 下一阶段开发清单 |
-| [05-catalog-management.md](./05-catalog-management.md) | 物品目录新增、编辑和字段规则 |
-| [06-inventory-filters.md](./06-inventory-filters.md) | 库存搜索、类型筛选和低库存筛选 |
-| [07-core-shell-boundary.md](./07-core-shell-boundary.md) | 核心和外壳的边界记录，Android 优先时重点看 |
-| [08-first-version-app.md](./08-first-version-app.md) | 第一版正式 app 当前状态、验证方式和已知边界 |
-| [09-operation-button-logic.md](./09-operation-button-logic.md) | 手机 app 操作入口、按钮含义和扫码状态机 |
-| [10-scan-workbench-redesign.md](./10-scan-workbench-redesign.md) | 扫码台重设计：推翻模式按钮，按扫码事件和当前上下文驱动 |
-| [11-flutter-android-app.md](./11-flutter-android-app.md) | Flutter Android 手机 app：Material 3、扫码能力、构建和 APK 校验记录 |
-| [12-msi-v1-and-0.2-scope.md](./12-msi-v1-and-0.2-scope.md) | msi:v1 长期二维码协议、Profile/State/Transaction 数据边界和 0.2 手机闭环范围 |
+| [00-project-map.md](./00-project-map.md) | 项目文件地图：当前主线、历史目录和文件职责 |
+| [01-qr-input-workflows.md](./01-qr-input-workflows.md) | 扫码输入流程：入库、出库、盘点、库位整理 |
+| [03-data-and-sync.md](./03-data-and-sync.md) | 本地 JSON、后续数据库迁移和同步边界 |
+| [04-next-steps.md](./04-next-steps.md) | 下一阶段原生 Android 开发清单 |
+| [05-catalog-management.md](./05-catalog-management.md) | 标签生成、必填字段和 ID 规则 |
+| [06-inventory-filters.md](./06-inventory-filters.md) | 库存搜索、状态筛选和库位筛选 |
+| [07-core-shell-boundary.md](./07-core-shell-boundary.md) | 原生 Android app、业务核心和测试工具边界 |
+| [09-operation-button-logic.md](./09-operation-button-logic.md) | 手机 app 操作入口、按钮含义和写入确认规则 |
+| [10-scan-workbench-redesign.md](./10-scan-workbench-redesign.md) | 扫码台设计：上下文驱动、冲突保护、库位整理 |
+| [12-msi-v1-and-0.2-scope.md](./12-msi-v1-and-0.2-scope.md) | `msi:v1` 二维码协议和本地记录边界 |
+| [13-native-android-v1-plan.md](./13-native-android-v1-plan.md) | 原生 Android v1 总计划：技术栈、数据、扫码和业务规则 |

@@ -1,102 +1,126 @@
-# 物品目录管理
+# 标签生成和字段规则
 
-## 为什么单独拆 `catalog.js`
+## 当前结论
 
-扫码工作流解决的是：
-
-```text
-扫到什么 -> 当前上下文是什么 -> 是否更新库存/库位
-```
-
-物品目录管理解决的是：
+新增页是标签生成器，不是建档页。
 
 ```text
-有哪些物品 -> 参数是否完整 -> 新建还是更新
+填写固定信息
+生成 msi:v1 payload
+打印占位
+复制 payload
 ```
 
-这两个问题分开后，后续接 Android 扫码、WebDAV 同步、批量导入时不会互相牵扯。
+新增页不写本地库存 JSON。真正写入发生在扫码页点击入库之后。
 
-## 当前支持
+## 自动 ID
 
-- 新增耗材卷
-- 新增零件
-- 编辑已有耗材卷
-- 编辑已有零件
-- 归档/恢复物品，不直接删除
-- 从已有物品克隆参数
-- 自动生成 ID
-- 保存时写一条 `catalog` 流水
-- 归档/恢复写 `archive` / `restore` 流水
-- 重复 ID 视为更新，不创建第二条
-
-## 表单入口
-
-正式 app 的 `查库存` 页顶部是物品维护表单。
-
-使用方式：
-
-1. 选择类型：耗材卷 / 零件。
-2. 填 ID、名称和参数。
-3. 点保存。
-4. 点库存列表里的物品，可以载入编辑。
-5. 载入已有物品后，可以点“克隆”复制参数，也可以点“归档/恢复”切换状态。
-6. 新建或克隆时可以点“生成 ID”，自动填入下一个可用 ID。
-
-## 字段规则
-
-耗材卷：
+默认自动生成 ID，允许手改。
 
 ```text
-id          必填，自动转大写
-name        必填
-empty_wt    必填，非负数字
-current_wt  可空，非负数字
-min_alarm   可空，默认 100
-archived_at 隐藏字段，归档时自动维护
+耗材: FIL-YYMMDD-###
+零件: PART-YYMMDD-###
+其他: ITEM-YYMMDD-###
+库位: LOC-YYMMDD-###
 ```
 
-零件：
+每张实体标签唯一 ID。
+
+## 耗材 spool
+
+必填：
 
 ```text
-id             必填，自动转大写
-name           必填
-unit_wt        必填，非负数字
-container_wt   可空，默认 0
-estimated_qty  可空，整数
-min_alarm      可空，默认 10
-archived_at    隐藏字段，归档时自动维护
+type=spool
+id
+brand
+material
+color
+tare_g
 ```
 
-## ID 生成规则
-
-耗材卷：
+`name` 自动生成：
 
 ```text
-材料-颜色代码-三位序号
-PLA-BLK-002
-PETG-CLR-002
+brand + material + color
 ```
 
-颜色代码优先使用内置常见颜色映射，例如黑色 `BLK`、白色 `WHT`、透明 `CLR`。未命中的颜色会转成大写 slug。
-
-零件：
+可选：
 
 ```text
-名称 slug-三位序号
-M3-INSERT-001
+full_g
+net_g
+note
 ```
 
-## 归档规则
+同类统计：
 
-归档只写 `archived_at`，不删除物品和流水。
+```text
+严格同色: brand + material + color
+宽松找色: material + color
+```
 
-- 默认库存列表只显示启用物品。
-- “全部状态”会同时显示启用和已归档物品。
-- “已归档”只显示归档物品。
-- 低库存统计不计入已归档物品。
+## 零件 part
 
-## 后续扩展点
+必填：
 
-- 加批量导入 JSON/CSV。
-- 给归档操作加二次确认。
-- 克隆时支持选择是否复制库位和当前库存。
+```text
+type=part
+id
+name
+category
+spec
+```
+
+可选：
+
+```text
+color
+unit_weight_g
+note
+```
+
+零件主变量是数量。`unit_weight_g` 只用于用总重量换算数量。
+
+## 其他 other
+
+必填：
+
+```text
+type=other
+id
+name
+```
+
+## 库位 location
+
+库位是任何可以放东西的位置，可以是货架一层、箱子、抽屉、托盘或其他容器。
+
+必填：
+
+```text
+type=location
+id
+name
+```
+
+## 重量 weight
+
+重量码用于扫码录入当前毛重或总重量。
+
+必填：
+
+```text
+type=weight
+value_g
+```
+
+## 缺字段处理
+
+标签缺必填字段时：
+
+```text
+扫码页拒绝入库
+不写本地 JSON
+提示回新增页重新生成标签并换新标签
+```

@@ -1,186 +1,119 @@
 # 本地数据和同步
 
-## 当前状态
+## 当前结论
 
-当前检测版使用：
+原生 Android v1 先用 JSON snapshot 文件，不上数据库。
 
-```text
-app/storage.js -> localStorage
-core/snapshot.js -> 手动导入/导出 JSON 快照
-core/merge.js -> 本地/远程快照合并
-```
-
-这样做只是为了零依赖、马上能跑。它不是最终数据方案。
-
-## 为什么存储层单独拆出来
-
-库存规则在 `core/inventory.js`，存储实现在 `app/storage.js`。
-快照协议在 `core/snapshot.js`。
-合并策略在 `core/merge.js`。
-
-原因：
-
-- Web 检测版可以用 localStorage。
-- Android APK 可以换成 SQL.js + Capacitor Filesystem。
-- Docker/Web 版可以换成服务端 SQLite。
-- WebDAV 同步只需要读写快照，不应该改库存算法。
-- 手动导入/导出和 WebDAV 同步应该复用同一份快照格式。
-- 同步合并应该独立于 WebDAV 传输层，手动合并导入和自动同步使用同一套规则。
-
-## 推荐数据演进
-
-### 当前
+运行方式：
 
 ```text
-localStorage JSON
+启动时读取 JSON 到内存
+扫码和按钮操作修改内存
+每次写操作后覆盖保存 JSON 文件
 ```
 
-优点：零依赖、方便调试。
+后续换 SQLite/Room 时，把 JSON 作为迁移源导入。
 
-缺点：不适合长期保存，不适合大数据量，不适合文件级同步。
+## 本地文件
 
-### 0.2 手机 app
+建议文件：
 
-0.2 先用 JSON 快照持久化，不急着上 SQLite。目标是先把手机扫码录入闭环跑顺。
+```text
+filesDir/inventory_snapshot.json
+```
 
-推荐快照结构：
+建议结构：
 
 ```json
 {
-  "schema": 2,
-  "device_id": "phone-a",
-  "profiles": {},
-  "states": {},
-  "transactions": []
+  "schema": 1,
+  "device_id": "android-phone",
+  "items": {},
+  "transactions": [],
+  "scan_log": []
 }
 ```
 
-字段边界：
+`items` 只保存已入库或曾经入库、出库、归档过的物品。不保存纯标签草稿。
 
-| 字段 | 作用 |
-|---|---|
-| `profiles` | 固定档案，来自 `msi:v1` 二维码或新增表单 |
-| `states` | 当前库存状态，只有真正入库后才出现 |
-| `transactions` | 关键动作流水，带 `device_id` 和含时区的 `created_at` |
+## item 记录
 
-详见 [12-msi-v1-and-0.2-scope.md](./12-msi-v1-and-0.2-scope.md)。
-
-### Android 后续
-
-```text
-SQLite / 文件数据库
-Android 本地文件保存 db 文件或快照
-```
-
-优点：离线稳定，数据库可导出。
-
-### WebDAV 同步
-
-```text
-本地 JSON / SQLite 快照
-  ↓
-导出 snapshot
-  ↓
-PUT 到 WebDAV
-  ↓
-GET 远程 snapshot
-  ↓
-校验格式
-  ↓
-合并 profiles / states / transactions
-```
-
-单用户优先，冲突规则先保持简单：
-
-```text
-同一条状态，state_updated_at 新的覆盖旧的
-流水按 tx_id 去重追加
-```
-
-当前已经实现手动合并导入：
-
-```text
-导入远程快照 -> 校验格式 -> 和本地状态合并 -> 写回本地
-```
-
-合并规则：
-
-- `spools` / `parts`：同 ID 比 `updated_at`，新的保留。
-- 远程有、本地没有：加入本地。
-- 本地有、远程没有：保留本地。
-- `transactions`：按物品、字段、时间、前后值生成 key 去重，再重新编号。
-
-## 同步不进入用户操作主链路
-
-用户操作应该是：
-
-```text
-扫码 -> 算库存 -> 写本地 -> 完成
-```
-
-同步应该是：
-
-```text
-后台定时 / 手动触发 -> 和 WebDAV 合并
-```
-
-这样即使网盘断开，扫码库存仍然可用。
-
-## UI 口径
-
-正式 app 的日常数据口径是：
-
-```text
-本地一份主数据
-云端一份同步副本
-```
-
-所以库存页不应该把“导出列表 / 导出快照”放在主操作栏里。正确入口划分：
-
-| 入口 | 定位 |
-|---|---|
-| 本地自动保存 | 默认行为，用户扫码或编辑后立即写本地 |
-| 云同步 | 后台或手动触发，把本地快照和云端快照合并 |
-| 导出本地备份 | 备份和调试入口，不是日常工作流 |
-| 合并导入快照 | 同步机制未接入前的临时恢复/调试入口 |
-| 覆盖恢复快照 | 灾难恢复入口，会替换本地数据 |
-
-`导出当前列表` 不作为正式功能保留。筛选列表是查看工具，不是同步或交接格式。
-
-## 当前快照格式
-
-新格式：
+一条 item 同时保存固定字段副本和当前变量。
 
 ```json
 {
-  "schema": "studio-inventory-snapshot",
-  "version": 1,
-  "exported_at": "2026-06-09T00:00:00.000Z",
+  "id": "FIL-260617-001",
+  "type": "spool",
+  "fixed": {
+    "brand": "Bambu",
+    "material": "PLA",
+    "color": "white",
+    "tare_g": 200
+  },
   "state": {
-    "spools": [],
-    "parts": [],
-    "transactions": []
+    "status": "in_stock",
+    "current_g": 712.4,
+    "location_id": "LOC-260617-001",
+    "location_name": "A架第一层",
+    "stocked_on": "260617",
+    "updated_at": "2026-06-17T10:00:00+00:00"
   }
 }
 ```
 
-为了兼容早期检测版，也支持旧格式：
+二维码是固定信息来源，本地 item 是查库存和保存当前状态的依据。
 
-```json
-{
-  "spools": [],
-  "parts": [],
-  "transactions": []
-}
+## 容量策略
+
+第一版总量控制在约 1000 条：
+
+```text
+items: 600
+transactions: 350
+scan_log: 50
 ```
 
-导入时会做基础校验，避免把明显错误的 JSON 写进本地存储。
+裁剪规则：
 
-## 覆盖导入与合并导入
+```text
+in_stock 不自动删
+items 超过上限时优先裁 archived，再裁 checked_out
+transactions 裁最旧流水
+scan_log 裁最旧扫码记录
+```
 
-当前检测版在“备份和调试”里保留两个导入入口：
+## 撤销
 
-- 覆盖导入：用于恢复备份，直接用快照替换本地。
-- 合并导入：用于同步场景，把远程快照和本地数据合并；导入前会先显示预览，包括远程新增、远程覆盖、本地保留和流水变化。
+第一版支持撤销上一笔写操作。
 
-日常同步最终不应该让用户手动导入文件，而应该由 WebDAV 同步模块自动拉取远程快照、调用合并逻辑、再上传合并后的快照。
+```text
+每次写操作保存 before/after
+撤销时恢复 before
+撤销本身写 transaction=undo
+```
+
+只保证本次运行期最近一笔可撤销；重启后不强制保留撤销能力。
+
+## 后续数据库迁移
+
+流程跑通后再上 SQLite/Room。
+
+迁移方式：
+
+```text
+读取 inventory_snapshot.json
+逐条导入 items
+逐条导入 transactions
+保留 snapshot 备份
+```
+
+## 同步
+
+WebDAV 或其他同步放到数据库/导出能力稳定后再做。
+
+同步不进入日常扫码主链路：
+
+```text
+扫码 -> 写本地 -> 完成
+后台或手动同步 -> 合并/上传
+```

@@ -2,145 +2,101 @@
 
 ## 输入协议
 
-```text
-weight:712.4
-spool:PLA-BLK-001
-part:M3-INSERT
-location:RACK-A01
-```
-
-当前解析规则在 `core/inventory.js` 的 `parsePayload()`。
-
-当前扫码状态机在 `core/workflow.js`。它只关心三件事：
-
-- 当前模式：`lookup` / `stocktake` / `move`
-- 待处理输入：重量、物品、库位
-- 扫码 payload 字符串
-
-页面入口、测试按钮、未来 Android 原生扫码都应该把字符串交给同一个工作流。
-
-## 扫码模块边界
-
-核心不绑定任何扫码库。
-
-正确边界是：
+第一版只认 `msi:v1`，不兼容旧短码。
 
 ```text
-任意扫码模块 / 扫码枪 / Android 原生 / 网页测试按钮
-  ↓
-得到字符串或扫码结果对象
-  ↓
-core/scanner-port.js 归一化
-  ↓
-core/workflow.js 处理 payload
-  ↓
-core/inventory.js 更新库存
+msi:v1;type=spool;id=FIL-260617-001;brand=Bambu;material=PLA;color=white;tare_g=200
+msi:v1;type=part;id=PART-260617-001;name=M3x8黑色圆头螺丝;category=screw;spec=M3x8;unit_weight_g=0.42
+msi:v1;type=other;id=ITEM-260617-001;name=热风枪
+msi:v1;type=location;id=LOC-260617-001;name=A架第一层
+msi:v1;type=weight;value_g=712.4
 ```
 
-`core/scanner-port.js` 支持这些输入：
+扫码模块只负责识别二维码字符串；库存逻辑只处理 payload。
 
-```js
-"spool:PLA-BLK-001"
-{ payload: "spool:PLA-BLK-001" }
-{ text: "spool:PLA-BLK-001" }
-{ rawValue: "spool:PLA-BLK-001" }
-{ raw: "spool:PLA-BLK-001" }
-{ value: "spool:PLA-BLK-001" }
-{ data: "spool:PLA-BLK-001" }
-```
+## 扫码页上下文
 
-后续如果换扫码库，只需要适配它输出的字段，不改库存核心。
-
-## 正式 app 的三个扫码上下文
-
-### 查库存
-
-目的：最快知道一个物品还剩多少、在哪里。
-
-流程：
+扫码页维护三个待处理上下文：
 
 ```text
-选择「查库存」
-扫 spool: 或 part:
-显示库存、低库存状态、库位
+pending_item
+pending_weight 或 pending_qty
+pending_location
 ```
 
-不写数据，不产生库存修改。
-
-### 盘点称重
-
-目的：称完后快速写入库存。
-
-流程：
+入库顺序自由：
 
 ```text
-选择「盘点称重」
-扫 weight:
-扫 spool: 或 part:
-自动计算并写入库存流水
+物品 -> 重量/数量 -> 库位 -> 点入库
+重量/数量 -> 库位 -> 物品 -> 点入库
+库位 -> 物品 -> 重量/数量 -> 点入库
 ```
 
-顺序可以反过来：
+但每类上下文只能有一个。未完成入库时扫到第二个物品、重量或库位，默认不替换，必须确认后才替换。
+
+## 入库
+
+扫到物品码时，如果本地没有该 `id`：
 
 ```text
-选择「盘点称重」
-扫物品码
-扫重量码
-自动计算并写入库存流水
+只展示标签固定信息
+不写本地 JSON
 ```
 
-耗材卷计算：
+点入库后才写本地 `items`，并保存固定字段副本和当前变量。
+
+耗材入库必须满足：
 
 ```text
-可用重量 = 当前毛重 - 空卷重量
+完整 spool 标签
+当前毛重 current_g
+库位码
+current_g > tare_g
 ```
 
-零件计算：
+零件入库必须满足：
 
 ```text
-估算数量 = floor((当前毛重 - 容器重量) / 单件重量)
+完整 part 标签
+数量 current_qty > 0
+库位码
 ```
 
-### 绑定库位
+数量可以手动输入，也可以通过总重量和 `unit_weight_g` 换算。
 
-目的：移动物品后快速更新位置。
+## 出库和盘点
 
-流程：
+扫到已在库物品：
 
 ```text
-选择「绑定库位」
-扫 location:
-扫 spool: 或 part:
-写入物品库位并记录流水
+显示库存详情
+可点出库
+可补重量/数量后点盘点
 ```
 
-顺序也可以反过来。
+所有普通写操作都需要按钮确认：
 
-## 扫码速度判断
-
-当前网页检测版是手动输入模拟扫码。未来 Android APK 里不要长期依赖网页 JS 解码摄像头画面。
-
-推荐做法：
-
-- APK 壳使用 Android 原生扫码插件。
-- 原生层识别出字符串后，把 `weight:...` / `spool:...` 交给 Web Core。
-- Web Core 只处理字符串和库存逻辑，不负责摄像头解码。
-
-这样速度瓶颈在原生扫码库，不在浏览器 JS。
-
-## 外挂扫码回调入口
-
-当前正式页面在 `app/app.js` 里暴露了：
-
-```js
-window.StudioInventoryScanner.push("spool:PLA-BLK-001");
-window.StudioInventoryScanner.push({ rawValue: "weight:712.4" });
+```text
+入库 / 出库 / 盘点 / 移库 / 归档
 ```
 
-后续 Capacitor 原生插件、网页扫码库、USB 扫码枪桥接脚本拿到结果后，调用 `push(result)` 即可。这样任何扫码来源都不会绕开网页检测版已经验证过的库存流程。
+## 库位整理
 
-为了兼容早期测试入口，也保留：
+单独扫库位码时，提示是否整理该库位。
 
-```js
-window.StudioInventory.handleScanPayload("spool:PLA-BLK-001");
+进入整理模式后：
+
+```text
+连续扫已在本地库存里的物品
+每扫一个自动更新 location
+写 move 流水
+震动/声音提示
 ```
+
+整理模式是第一版唯一允许扫码后自动写入的模式。扫到未入库物品时只提示，不写本地。
+
+## 手动兜底
+
+重量和数量允许手动输入兜底，但主流程仍然优先扫码。
+
+手动输入不用于绕过必填字段。标签缺必填字段时，应重新生成标签并换新标签。

@@ -1,42 +1,38 @@
-# 工作室物品管理 Flutter 手机 app
+# Flutter 手机 app 历史实现
 
-这是项目的 Flutter / Dart / Material 3 Android 手机 app。
+这个目录是 Flutter 0.2.x 历史实现，当前不再作为手机端主线。
 
-当前版本：
+新手机端主线见：
+
+```text
+mobile_android/
+```
+
+当前决策见：
+
+```text
+../架构决策.md
+../docs/13-native-android-v1-plan.md
+```
+
+## 保留原因
+
+- 参考早期四入口页面：扫码 / 库存 / 新增 / 流水。
+- 参考早期 JSON、扫码诊断和页面组织。
+- 保留历史 APK 构建记录和排查上下文。
+
+不要在这个目录继续新增主功能。
+
+## 历史版本
+
+最后一次 Flutter 版本：
 
 ```text
 0.2.4+24
 ```
 
-当前可安装 release 包在仓库根目录：
+历史 release 包曾输出为：
 
 ```text
 studio-inventory-flutter-0.2.4-arm64-release.apk
-```
-
-## 当前功能
-
-- Material 3 四入口：扫码、库存、新增、流水。
-- Android 原生 ZXing 扫码作为主扫码入口，避开部分机型的 CameraX / ML Kit 初始化异常。
-- `mobile_scanner` 页面内预览扫码保留为实验入口。
-- 扫码、预览扫码、停止、手电筒按钮；相机启动异常会保留手动补录入口。
-- 扫码后震动和系统点击声提示。
-- 手动 payload 补录底部弹窗。
-- 本地 demo 数据和 `SharedPreferences` 持久化。
-
-## 构建
-
-建议从 ASCII 路径构建：
-
-```bash
-cd /data/studio_inventory_repo/mobile_flutter
-/data/flutter/bin/flutter analyze
-/data/flutter/bin/flutter test
-/data/flutter/bin/flutter build apk --release --target-platform android-arm64
-```
-
-输出：
-
-```text
-build/app/outputs/flutter-apk/app-release.apk
 ```
