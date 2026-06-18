@@ -4,7 +4,7 @@
 
 ```text
 applicationId: studio.inventory.android
-versionName: 0.3.1
+versionName: 0.3.2
 minSdk: 31
 targetSdk: 36
 compileSdk: 36
@@ -36,7 +36,7 @@ app/build/outputs/apk/debug/app-debug.apk
 仓库根目录也会保留一份便于安装测试：
 
 ```text
-studio-inventory-native-0.3.1-debug.apk
+studio-inventory-native-0.3.2-debug.apk
 ```
 
 ## 当前功能

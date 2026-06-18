@@ -20,7 +20,7 @@ mobile_android/
 当前 debug APK：
 
 ```text
-studio-inventory-native-0.3.1-debug.apk
+studio-inventory-native-0.3.2-debug.apk
 ```
 
 ## 构建配置
@@ -47,7 +47,7 @@ JSON snapshot
 
 ## 下一步
 
-1. 真机安装 `studio-inventory-native-0.3.1-debug.apk`。
+1. 真机安装 `studio-inventory-native-0.3.2-debug.apk`。
 2. 测新增页生成 payload、扫码页识别、入库、出库、库位整理。
 3. 修真机相机预览、识别速度和 UI 卡点。
 4. 增加 JSON 导出/导入入口。

@@ -100,7 +100,7 @@ msi:v1;type=weight;value_g=712.4
 
 近期：
 
-1. 真机测试原生 debug APK：`studio-inventory-native-0.3.1-debug.apk`。
+1. 真机测试原生 debug APK：`studio-inventory-native-0.3.2-debug.apk`。
 2. 根据真机反馈修扫码预览、入库上下文和库位整理细节。
 3. 补导出/导入 JSON。
 4. 流程稳定后迁 SQLite/Room。

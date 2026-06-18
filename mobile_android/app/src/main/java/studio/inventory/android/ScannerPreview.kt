@@ -45,6 +45,7 @@ fun ScannerPreview(
     torchOn: Boolean,
     onPayload: (String) -> Unit,
     onError: (String) -> Unit,
+    onPermissionGranted: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -58,7 +59,11 @@ fun ScannerPreview(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         hasPermission = granted
-        if (!granted) onError("没有相机权限。")
+        if (granted) {
+            onPermissionGranted()
+        } else {
+            onError("没有相机权限。")
+        }
     }
 
     if (!hasPermission) {
@@ -70,7 +75,7 @@ fun ScannerPreview(
             ) {
                 Text("需要相机权限才能扫码。", style = MaterialTheme.typography.bodyMedium)
                 Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                    Text("授权相机")
+                    Text("授权并开始扫码")
                 }
             }
         }

@@ -72,10 +72,14 @@ fun ScanPage(controller: InventoryController, modifier: Modifier = Modifier) {
                     torchOn = torchOn,
                     onPayload = controller::handlePayload,
                     onError = controller::reportError,
+                    onPermissionGranted = {
+                        scannerRunning = true
+                        controller.reportError("相机权限已授权，正在启动扫码。")
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
                 if (!scannerRunning) {
-                    Text("相机已停止", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("点“开始扫码”打开相机", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
