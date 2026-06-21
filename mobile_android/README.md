@@ -4,7 +4,7 @@
 
 ```text
 applicationId: studio.inventory.android
-versionName: 0.3.2
+versionName: 0.3.3
 minSdk: 31
 targetSdk: 36
 compileSdk: 36
@@ -36,13 +36,14 @@ app/build/outputs/apk/debug/app-debug.apk
 仓库根目录也会保留一份便于安装测试：
 
 ```text
-studio-inventory-native-0.3.2-debug.apk
+studio-inventory-native-0.3.3-debug.apk
 ```
 
 ## 当前功能
 
 - 四个入口：扫码 / 库存 / 新增 / 流水。
 - 页面内嵌 CameraX 相机预览。
+- 相机空闲 20 秒自动暂停，减少耗电。
 - ML Kit 只识别二维码。
 - 只认 `msi:v1`。
 - 新增页生成固定标签 payload，打印先占位。

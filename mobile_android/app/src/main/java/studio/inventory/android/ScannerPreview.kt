@@ -75,20 +75,25 @@ fun ScannerPreview(
             ) {
                 Text("需要相机权限才能扫码。", style = MaterialTheme.typography.bodyMedium)
                 Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                    Text("授权并开始扫码")
+                    Text("授权并开始扫描")
                 }
             }
         }
         return
     }
 
-    CameraPreviewSurface(
-        running = running,
-        torchOn = torchOn,
-        onPayload = onPayload,
-        onError = onError,
-        modifier = modifier,
-    )
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        CameraPreviewSurface(
+            running = running,
+            torchOn = torchOn,
+            onPayload = onPayload,
+            onError = onError,
+            modifier = Modifier.fillMaxSize(),
+        )
+        if (!running) {
+            Text("相机已暂停，点击开始扫描", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }
 
 @Composable

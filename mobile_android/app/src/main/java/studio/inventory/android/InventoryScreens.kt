@@ -35,6 +35,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -45,13 +46,37 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+private const val ScannerIdlePauseMs = 20_000L
 
 @Composable
 fun ScanPage(controller: InventoryController, modifier: Modifier = Modifier) {
     var scannerRunning by remember { mutableStateOf(false) }
     var torchOn by remember { mutableStateOf(false) }
     var manualOpen by remember { mutableStateOf(false) }
+    var lastScannerActivityAt by remember { mutableLongStateOf(0L) }
+
+    fun startScanner() {
+        lastScannerActivityAt = System.currentTimeMillis()
+        scannerRunning = true
+    }
+
+    fun pauseScanner() {
+        scannerRunning = false
+        torchOn = false
+    }
+
+    LaunchedEffect(scannerRunning, lastScannerActivityAt) {
+        if (!scannerRunning) return@LaunchedEffect
+        val marker = lastScannerActivityAt
+        delay(ScannerIdlePauseMs)
+        if (scannerRunning && lastScannerActivityAt == marker) {
+            pauseScanner()
+            controller.reportError("20 秒未扫码，已暂停相机。")
+        }
+    }
 
     LazyColumn(
         modifier = modifier
@@ -70,17 +95,17 @@ fun ScanPage(controller: InventoryController, modifier: Modifier = Modifier) {
                 ScannerPreview(
                     running = scannerRunning,
                     torchOn = torchOn,
-                    onPayload = controller::handlePayload,
+                    onPayload = { payload ->
+                        lastScannerActivityAt = System.currentTimeMillis()
+                        controller.handlePayload(payload)
+                    },
                     onError = controller::reportError,
                     onPermissionGranted = {
-                        scannerRunning = true
+                        startScanner()
                         controller.reportError("相机权限已授权，正在启动扫码。")
                     },
                     modifier = Modifier.fillMaxSize(),
                 )
-                if (!scannerRunning) {
-                    Text("点“开始扫码”打开相机", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
             }
         }
         item {
@@ -88,11 +113,8 @@ fun ScanPage(controller: InventoryController, modifier: Modifier = Modifier) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Button(onClick = { scannerRunning = true }) { Text("开始扫码") }
-                OutlinedButton(onClick = {
-                    scannerRunning = false
-                    torchOn = false
-                }) { Text("停止") }
+                Button(onClick = { startScanner() }) { Text("开始扫描") }
+                OutlinedButton(onClick = { pauseScanner() }) { Text("暂停") }
                 OutlinedButton(onClick = { torchOn = !torchOn }, enabled = scannerRunning) {
                     Text(if (torchOn) "关灯" else "手电筒")
                 }
