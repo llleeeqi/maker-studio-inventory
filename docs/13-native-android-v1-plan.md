@@ -13,7 +13,7 @@ mobile_android/
 当前工程已创建，debug APK 已构建：
 
 ```text
-studio-inventory-native-0.3.5-debug.apk
+studio-inventory-native-0.3.6-debug.apk
 ```
 
 ## 技术边界

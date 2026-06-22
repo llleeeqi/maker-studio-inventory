@@ -4,6 +4,8 @@
 
 第一版只认 `v1;`，不兼容旧短码和 `msi:v1;`。
 
+字段值中的中文、空格和分隔符在二维码中使用百分号编码，App 扫码后自动解码。
+
 ```text
 v1;type=spool;id=FIL-260617-001;brand=Bambu;material=PLA;color=white;tare_g=200;created_on=260622;note=备注
 v1;type=part;id=PART-260617-001;name=M3x8黑色圆头螺丝;unit_weight_g=0.42;created_on=260622;note=备注

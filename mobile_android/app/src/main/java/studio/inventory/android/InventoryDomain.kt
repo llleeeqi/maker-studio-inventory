@@ -1,5 +1,7 @@
 package studio.inventory.android
 
+import java.io.ByteArrayOutputStream
+import java.nio.charset.StandardCharsets
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.floor
@@ -202,7 +204,7 @@ fun parseV1Payload(raw: String): ParsedPayload {
         .mapNotNull { token ->
             val index = token.indexOf("=")
             if (index <= 0) return@mapNotNull null
-            token.substring(0, index).trim().lowercase() to token.substring(index + 1).trim()
+            token.substring(0, index).trim().lowercase() to decodePayloadValue(token.substring(index + 1).trim())
         }
         .toMap()
 
@@ -278,11 +280,76 @@ fun buildV1Payload(fields: Map<String, String>): String {
     fields.forEach { (key, value) ->
         val clean = value.trim()
         if (clean.isNotEmpty()) {
-            buffer.append(";").append(key).append("=").append(clean)
+            buffer.append(";").append(key).append("=").append(encodePayloadValue(clean))
         }
     }
     return buffer.toString()
 }
+
+private fun encodePayloadValue(value: String): String {
+    val bytes = value.toByteArray(StandardCharsets.UTF_8)
+    val out = StringBuilder(bytes.size)
+    bytes.forEach { raw ->
+        val byte = raw.toInt() and 0xff
+        if (isUnreservedPayloadByte(byte)) {
+            out.append(byte.toChar())
+        } else {
+            out.append('%')
+            out.append(UpperHex[byte ushr 4])
+            out.append(UpperHex[byte and 0x0f])
+        }
+    }
+    return out.toString()
+}
+
+private fun decodePayloadValue(value: String): String {
+    if (!value.contains('%')) return value
+    val out = StringBuilder(value.length)
+    val bytes = ByteArrayOutputStream()
+
+    fun flushBytes() {
+        if (bytes.size() == 0) return
+        out.append(String(bytes.toByteArray(), StandardCharsets.UTF_8))
+        bytes.reset()
+    }
+
+    var index = 0
+    while (index < value.length) {
+        val char = value[index]
+        if (char == '%' && index + 2 < value.length) {
+            val high = value[index + 1].hexValue()
+            val low = value[index + 2].hexValue()
+            if (high >= 0 && low >= 0) {
+                bytes.write((high shl 4) or low)
+                index += 3
+                continue
+            }
+        }
+        flushBytes()
+        out.append(char)
+        index += 1
+    }
+    flushBytes()
+    return out.toString()
+}
+
+private fun isUnreservedPayloadByte(byte: Int): Boolean =
+    byte in 'A'.code..'Z'.code ||
+        byte in 'a'.code..'z'.code ||
+        byte in '0'.code..'9'.code ||
+        byte == '-'.code ||
+        byte == '.'.code ||
+        byte == '_'.code ||
+        byte == '~'.code
+
+private fun Char.hexValue(): Int = when (this) {
+    in '0'..'9' -> code - '0'.code
+    in 'a'..'f' -> code - 'a'.code + 10
+    in 'A'..'F' -> code - 'A'.code + 10
+    else -> -1
+}
+
+private const val UpperHex = "0123456789ABCDEF"
 
 fun todayCode(): String {
     val now = OffsetDateTime.now()

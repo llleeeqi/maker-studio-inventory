@@ -5,6 +5,7 @@ import { parsePayload } from "../core/inventory.js";
 testV1Spool();
 testV1Weight();
 testV1Location();
+testV1EncodedLocation();
 testRejectLegacyShortCode();
 
 console.log("v1 payload tests passed");
@@ -32,6 +33,14 @@ function testV1Location() {
 
   assert.equal(payload.type, "location");
   assert.equal(payload.value, "RACK-A01");
+}
+
+function testV1EncodedLocation() {
+  const payload = parsePayload("v1;type=location;id=LOC-TEST-001;name=%E6%B5%8B%E8%AF%95%E5%BA%93%E4%BD%8D;created_on=260622");
+
+  assert.equal(payload.type, "location");
+  assert.equal(payload.value, "LOC-TEST-001");
+  assert.equal(payload.fields.name, "测试库位");
 }
 
 function testRejectLegacyShortCode() {

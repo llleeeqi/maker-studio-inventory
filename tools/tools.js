@@ -53,7 +53,6 @@ function makeScenario(batch) {
       id: `LOC-${suffix}-001`,
       name: "测试库位",
       created_on: createdOn,
-      note,
     }),
   };
   const spool = {
@@ -69,7 +68,6 @@ function makeScenario(batch) {
       color: "white",
       tare_g: "200",
       created_on: createdOn,
-      note,
     }),
   };
   const part = {
@@ -83,7 +81,6 @@ function makeScenario(batch) {
       name: "M3x8黑色圆头螺丝",
       unit_weight_g: "0.42",
       created_on: createdOn,
-      note,
     }),
   };
   const other = {
@@ -96,7 +93,6 @@ function makeScenario(batch) {
       id: `ITEM-${suffix}-001`,
       name: "热风枪",
       created_on: createdOn,
-      note,
     }),
   };
   const weights = [
@@ -128,7 +124,6 @@ function qrLabel(item, extraClass = "") {
   const revealed = revealedId === item.key ? " revealed" : "";
   return `
     <button class="qr-label ${extraClass}${revealed}" type="button" data-reveal="${escapeHtml(item.key)}" aria-label="显示 ${escapeHtml(item.title)} 二维码">
-      <span class="qr-title">${escapeHtml(item.title)}</span>
       <span class="qr-art">${renderQr(item.payload)}</span>
       <span class="qr-cover">悬停 / 点击显示</span>
     </button>
@@ -194,8 +189,12 @@ function weightCode(value, title) {
 function payload(fields) {
   return `v1;${Object.entries(fields)
     .filter(([, value]) => String(value).trim() !== "")
-    .map(([key, value]) => `${key}=${String(value).trim()}`)
+    .map(([key, value]) => `${key}=${encodePayloadValue(String(value).trim())}`)
     .join(";")}`;
+}
+
+function encodePayloadValue(value) {
+  return encodeURIComponent(value);
 }
 
 function renderQr(text) {

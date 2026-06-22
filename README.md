@@ -65,6 +65,7 @@ v1;type=weight;value_g=712.4
 规则：
 
 - 二维码只存固定信息，不存当前重量、数量、库位和状态。
+- 字段值里的中文、空格和分隔符会在二维码中百分号编码，App 扫码后自动解码。
 - 每张实体标签唯一 ID。
 - 耗材名称可由 `brand + material + color` 自动生成。
 - 耗材入库必须有当前毛重，且 `current_g > tare_g`。
@@ -105,7 +106,7 @@ v1;type=weight;value_g=712.4
 
 近期：
 
-1. 真机测试原生 debug APK：`studio-inventory-native-0.3.5-debug.apk`。
+1. 真机测试原生 debug APK：`studio-inventory-native-0.3.6-debug.apk`。
 2. 根据真机反馈修扫码预览、入库上下文和库位整理细节。
 3. 补导出/导入 JSON。
 4. 流程稳定后迁 SQLite/Room。

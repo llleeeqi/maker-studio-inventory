@@ -65,7 +65,7 @@ compileSdk = 36
 当前 debug APK：
 
 ```text
-studio-inventory-native-0.3.5-debug.apk
+studio-inventory-native-0.3.6-debug.apk
 ```
 
 ## tools/

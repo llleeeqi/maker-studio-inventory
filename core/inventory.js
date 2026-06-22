@@ -65,7 +65,7 @@ function parseV1Payload(payload) {
     const index = segment.indexOf("=");
     if (index <= 0) continue;
     const key = segment.slice(0, index).trim().toLowerCase();
-    const value = segment.slice(index + 1).trim();
+    const value = decodePayloadValue(segment.slice(index + 1).trim());
     if (key) fields[key] = value;
   }
 
@@ -94,6 +94,14 @@ function parseV1Payload(payload) {
     raw: payload,
     fields,
   };
+}
+
+function decodePayloadValue(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 export function findItem(state, type, id) {

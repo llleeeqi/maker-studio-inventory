@@ -1001,7 +1001,7 @@ code {
 }
 
 .shelf-top {
-  grid-template-columns: minmax(0, 1fr) 180px;
+  grid-template-columns: minmax(0, 1fr) 220px;
   align-items: center;
   border: 2px solid #6b7476;
   border-radius: 8px;
@@ -1072,10 +1072,10 @@ code {
 }
 
 .fake-label {
-  width: min(100%, 320px);
+  width: min(100%, 360px);
   aspect-ratio: 4 / 3;
   display: grid;
-  grid-template-columns: 1fr 42%;
+  grid-template-columns: minmax(0, 1fr) minmax(118px, 44%);
   gap: 8px;
   align-items: center;
   border: 1px solid #111;
@@ -1141,23 +1141,9 @@ code {
   transform: none;
 }
 
-.qr-title {
-  position: absolute;
-  left: 6px;
-  right: 6px;
-  top: 6px;
-  z-index: 3;
-  color: var(--text);
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1.2;
-  text-align: left;
-  overflow-wrap: anywhere;
-}
-
 .qr-art {
   width: 100%;
-  max-width: 150px;
+  max-width: 190px;
   display: grid;
   place-items: center;
 }
@@ -1191,11 +1177,6 @@ code {
 
 .shelf-location-label {
   aspect-ratio: 1;
-}
-
-.weight-label .qr-title,
-.flow-qr .qr-title {
-  display: none;
 }
 
 .flow-grid {

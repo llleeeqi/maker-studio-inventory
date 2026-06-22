@@ -50,7 +50,7 @@ v1;type=location;id=LOC-260617-001;name=Rack A shelf 1;created_on=260622;note=no
 v1;type=weight;value_g=712.4
 ```
 
-QR codes store fixed data only. Current weight, quantity, location, stock status, and transactions live in local app data.
+QR codes store fixed data only. Non-ASCII characters, spaces, and separators in field values are percent-encoded in the QR payload and decoded by the app. Current weight, quantity, location, stock status, and transactions live in local app data.
 
 ## Directories
 
