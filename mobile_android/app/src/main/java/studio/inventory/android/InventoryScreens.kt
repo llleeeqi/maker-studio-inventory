@@ -2,13 +2,15 @@
 
 package studio.inventory.android
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
+import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -34,8 +36,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +48,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -291,6 +298,7 @@ fun InventoryPage(controller: InventoryController, modifier: Modifier = Modifier
 @Composable
 fun AddLabelPage(
     controller: InventoryController,
+    printer: LabelPrinterController,
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier,
 ) {
@@ -305,40 +313,14 @@ fun AddLabelPage(
     var unitWeightG by remember { mutableStateOf("") }
     var weightValue by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
-    var generatedPayload by remember { mutableStateOf("") }
+    var generatedLabel by remember { mutableStateOf<PrintLabelData?>(null) }
+    var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var pendingPrinterAction by remember { mutableStateOf<PrinterPermissionAction?>(null) }
     val scope = rememberCoroutineScope()
-    val printer = remember { LabelPrinterController() }
-    val printerPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions(),
-    ) { grants ->
-        val denied = printerPermissions().filter { grants[it] == false }
-        if (denied.isEmpty()) {
-            printer.discover()
-        } else {
-            scope.launch {
-                snackbarHostState.showSnackbar("缺少蓝牙或定位权限，不能搜索打印机。")
-            }
-        }
-    }
 
     LaunchedEffect(type) {
         id = nextAutoId(type, controller.snapshot.items.keys)
-        generatedPayload = ""
-    }
-
-    DisposableEffect(Unit) {
-        onDispose { printer.close() }
-    }
-
-    fun ensurePrinterPermissions(onGranted: () -> Unit) {
-        val missing = printerPermissions().filter {
-            context.checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
-        }
-        if (missing.isEmpty()) {
-            onGranted()
-        } else {
-            printerPermissionLauncher.launch(missing.toTypedArray())
-        }
+        generatedLabel = null
     }
 
     fun currentLabel(): PrintLabelData {
@@ -360,6 +342,58 @@ fun AddLabelPage(
             line2 = todayDisplayDate(),
             line3 = note.ifBlank { " " },
         )
+    }
+
+    fun runPrinterAction(action: PrinterPermissionAction?) {
+        when (action) {
+            PrinterPermissionAction.Search -> printer.discover(autoConnectFirst = printer.autoConnectEnabled)
+            PrinterPermissionAction.AutoConnect -> printer.autoConnect()
+            PrinterPermissionAction.Print -> {
+                val label = currentLabel()
+                generatedLabel = label
+                printer.print(label)
+            }
+            null -> Unit
+        }
+    }
+
+    val printerPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { grants ->
+        val denied = printerPermissions().filter { grants[it] != true }
+        val action = pendingPrinterAction
+        pendingPrinterAction = null
+        if (denied.isEmpty()) {
+            runPrinterAction(action)
+        } else {
+            scope.launch {
+                snackbarHostState.showSnackbar("缺少蓝牙或定位权限，不能搜索打印机。")
+            }
+        }
+    }
+
+    fun ensurePrinterPermissions(action: PrinterPermissionAction) {
+        val missing = missingPrinterPermissions(context)
+        if (missing.isEmpty()) {
+            runPrinterAction(action)
+        } else {
+            pendingPrinterAction = action
+            printerPermissionLauncher.launch(missing.toTypedArray())
+        }
+    }
+
+    LaunchedEffect(printer.autoConnectEnabled) {
+        if (printer.autoConnectEnabled) {
+            if (hasPrinterPermissions(context)) {
+                printer.autoConnect()
+            } else {
+                printer.markAutoConnectWaitingForPermission()
+            }
+        }
+    }
+
+    LaunchedEffect(generatedLabel) {
+        previewBitmap = generatedLabel?.let { printer.renderPreview(it) }
     }
 
     Column(
@@ -412,12 +446,12 @@ fun AddLabelPage(
                 Text("生成 ID")
             }
             Button(onClick = {
-                generatedPayload = currentLabel().payload
+                generatedLabel = currentLabel()
             }) {
                 Text("生成标签")
             }
             OutlinedButton(onClick = {
-                generatedPayload = ""
+                generatedLabel = null
                 name = ""
                 brand = ""
                 color = ""
@@ -427,20 +461,33 @@ fun AddLabelPage(
                 note = ""
             }) { Text("清空") }
             OutlinedButton(onClick = {
-                ensurePrinterPermissions { printer.discover() }
-            }) { Text("搜索打印机") }
+                if (printer.isDiscovering) {
+                    printer.stopDiscovery()
+                } else {
+                    ensurePrinterPermissions(PrinterPermissionAction.Search)
+                }
+            }) { Text(if (printer.isDiscovering) "停止搜索" else "搜索打印机") }
             OutlinedButton(onClick = {
-                val label = currentLabel()
-                generatedPayload = label.payload
-                ensurePrinterPermissions { printer.print(label) }
+                ensurePrinterPermissions(PrinterPermissionAction.Print)
             }) { Text("打印") }
         }
-        PrinterPanel(printer)
-        if (generatedPayload.isNotBlank()) {
+        PrinterPanel(
+            printer = printer,
+            onAutoConnectChange = { enabled ->
+                printer.updateAutoConnectEnabled(enabled)
+                if (enabled) {
+                    ensurePrinterPermissions(PrinterPermissionAction.AutoConnect)
+                } else if (printer.isDiscovering) {
+                    printer.stopDiscovery("已关闭自动连接。")
+                }
+            },
+        )
+        generatedLabel?.let { label ->
+            LabelPreviewCard(label, previewBitmap)
             ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("二维码内容", style = MaterialTheme.typography.titleMedium)
-                    Text(generatedPayload)
+                    Text(label.payload)
                 }
             }
         }
@@ -494,11 +541,139 @@ private fun ListCard(title: String, subtitle: String, footer: String = "") {
     }
 }
 
+private enum class PrinterPermissionAction {
+    Search,
+    AutoConnect,
+    Print,
+}
+
 @Composable
-private fun PrinterPanel(printer: LabelPrinterController) {
+private fun LabelPreviewCard(label: PrintLabelData, bitmap: Bitmap?) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("标签预览", style = MaterialTheme.typography.titleMedium)
+            Text("40 x 30 mm", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(4f / 3f)
+                            .border(1.dp, Color.Black)
+                            .background(Color.White),
+                    )
+                } else {
+                    FallbackLabelPreview(label)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FallbackLabelPreview(label: PrintLabelData) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(4f / 3f)
+            .border(1.dp, Color.Black)
+            .background(Color.White)
+            .padding(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+        ) {
+            Text(label.line1, color = Color.Black, style = MaterialTheme.typography.titleMedium)
+            Text(label.line2, color = Color.Black, style = MaterialTheme.typography.bodyMedium)
+            Text(label.line3, color = Color.Black, style = MaterialTheme.typography.bodyMedium)
+        }
+        QrPreviewPattern(
+            payload = label.payload,
+            modifier = Modifier
+                .width(132.dp)
+                .aspectRatio(1f)
+                .border(1.dp, Color.Black),
+        )
+    }
+}
+
+@Composable
+private fun QrPreviewPattern(payload: String, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier.background(Color.White)) {
+        val cells = 25
+        val cell = size.minDimension / cells
+        val seed = payload.fold(0) { acc, char -> (acc * 31 + char.code) and 0x7fffffff }
+
+        fun drawCell(x: Int, y: Int) {
+            drawRect(
+                color = Color.Black,
+                topLeft = Offset(x * cell, y * cell),
+                size = Size(cell, cell),
+            )
+        }
+
+        fun drawFinder(left: Int, top: Int) {
+            for (y in 0 until 7) {
+                for (x in 0 until 7) {
+                    val border = x == 0 || y == 0 || x == 6 || y == 6
+                    val center = x in 2..4 && y in 2..4
+                    if (border || center) drawCell(left + x, top + y)
+                }
+            }
+        }
+
+        drawFinder(1, 1)
+        drawFinder(cells - 8, 1)
+        drawFinder(1, cells - 8)
+        for (y in 0 until cells) {
+            for (x in 0 until cells) {
+                val inFinder =
+                    (x in 1..7 && y in 1..7) ||
+                        (x in cells - 8 until cells - 1 && y in 1..7) ||
+                        (x in 1..7 && y in cells - 8 until cells - 1)
+                if (!inFinder && ((x * 17 + y * 23 + seed) % 7 < 3)) {
+                    drawCell(x, y)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrinterPanel(
+    printer: LabelPrinterController,
+    onAutoConnectChange: (Boolean) -> Unit,
+) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("标签打印机", style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("启动自动连接")
+                    Text(
+                        if (printer.autoConnectEnabled) "打开 App 后会自动连接上次打印机；没有记录时连接第一个发现的打印机。"
+                        else "关闭时只手动搜索和连接。",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = printer.autoConnectEnabled,
+                    onCheckedChange = onAutoConnectChange,
+                )
+            }
+            HorizontalDivider()
             Text(printer.status)
             if (printer.printers.isNotEmpty()) {
                 HorizontalDivider()
@@ -606,21 +781,4 @@ private fun labelTitleLine(
 private fun todayDisplayDate(): String {
     val code = todayCode()
     return "20${code.substring(0, 2)}-${code.substring(2, 4)}-${code.substring(4, 6)}"
-}
-
-private fun printerPermissions(): List<String> {
-    val permissions = mutableListOf(
-        Manifest.permission.ACCESS_FINE_LOCATION,
-        Manifest.permission.ACCESS_COARSE_LOCATION,
-    )
-    if (Build.VERSION.SDK_INT >= 31) {
-        permissions += Manifest.permission.BLUETOOTH_SCAN
-        permissions += Manifest.permission.BLUETOOTH_CONNECT
-    } else {
-        @Suppress("DEPRECATION")
-        permissions += Manifest.permission.BLUETOOTH
-        @Suppress("DEPRECATION")
-        permissions += Manifest.permission.BLUETOOTH_ADMIN
-    }
-    return permissions
 }

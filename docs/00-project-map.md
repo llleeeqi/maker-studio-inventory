@@ -65,12 +65,14 @@ compileSdk = 36
 当前 debug APK：
 
 ```text
-studio-inventory-native-0.3.4-debug.apk
+studio-inventory-native-0.3.5-debug.apk
 ```
 
 ## tools/
 
 `tools/` 是虚拟货架测试台，不是正式库存软件。
+
+线上地址: https://llleeeqi.github.io/maker-studio-inventory/tools/
 
 | 文件 | 职责 |
 |---|---|

@@ -16,6 +16,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -29,11 +30,22 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val controller = remember { InventoryController(applicationContext) }
+            val printer = remember { LabelPrinterController(applicationContext) }
             LaunchedEffect(Unit) {
                 controller.load()
+                if (printer.autoConnectEnabled) {
+                    if (hasPrinterPermissions(applicationContext)) {
+                        printer.autoConnect()
+                    } else {
+                        printer.markAutoConnectWaitingForPermission()
+                    }
+                }
+            }
+            DisposableEffect(Unit) {
+                onDispose { printer.close() }
             }
             StudioInventoryTheme {
-                StudioInventoryApp(controller)
+                StudioInventoryApp(controller, printer)
             }
         }
     }
@@ -59,7 +71,7 @@ private fun StudioInventoryTheme(content: @Composable () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StudioInventoryApp(controller: InventoryController) {
+fun StudioInventoryApp(controller: InventoryController, printer: LabelPrinterController) {
     var page by remember { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
     val titles = listOf("扫码", "库存", "新增", "流水")
@@ -93,6 +105,7 @@ fun StudioInventoryApp(controller: InventoryController) {
             1 -> InventoryPage(controller = controller, modifier = modifier)
             2 -> AddLabelPage(
                 controller = controller,
+                printer = printer,
                 snackbarHostState = snackbarHostState,
                 modifier = modifier,
             )

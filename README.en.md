@@ -65,6 +65,11 @@ QR codes store fixed data only. Current weight, quantity, location, stock status
 | `tests/` | Early JS core tests. |
 | `docs/` | Current design and implementation notes. |
 
+Virtual shelf test bench:
+
+- GitHub Pages: https://llleeeqi.github.io/maker-studio-inventory/tools/
+- Local file: [tools/index.html](./tools/index.html)
+
 ## Documentation
 
 Start from [docs/README.md](./docs/README.md).

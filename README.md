@@ -84,6 +84,11 @@ v1;type=weight;value_g=712.4
 | `tests/` | 早期 JS 核心测试 |
 | `docs/` | 当前设计和后续开发记录 |
 
+虚拟货架测试台：
+
+- GitHub Pages: https://llleeeqi.github.io/maker-studio-inventory/tools/
+- 本地打开: [tools/index.html](./tools/index.html)
+
 ## 文档
 
 从 [docs/README.md](./docs/README.md) 开始看。
@@ -100,7 +105,7 @@ v1;type=weight;value_g=712.4
 
 近期：
 
-1. 真机测试原生 debug APK：`studio-inventory-native-0.3.4-debug.apk`。
+1. 真机测试原生 debug APK：`studio-inventory-native-0.3.5-debug.apk`。
 2. 根据真机反馈修扫码预览、入库上下文和库位整理细节。
 3. 补导出/导入 JSON。
 4. 流程稳定后迁 SQLite/Room。

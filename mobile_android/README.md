@@ -4,7 +4,7 @@
 
 ```text
 applicationId: studio.inventory.android
-versionName: 0.3.4
+versionName: 0.3.5
 minSdk: 31
 targetSdk: 36
 compileSdk: 36
@@ -36,7 +36,7 @@ app/build/outputs/apk/debug/app-debug.apk
 仓库根目录也会保留一份便于安装测试：
 
 ```text
-studio-inventory-native-0.3.4-debug.apk
+studio-inventory-native-0.3.5-debug.apk
 ```
 
 ## 当前功能
@@ -47,6 +47,9 @@ studio-inventory-native-0.3.4-debug.apk
 - ML Kit 只识别二维码。
 - 只认 `v1;`。
 - 新增页生成固定标签并接入德佟 LPAPI 打印骨架。
+- 生成标签后展示 40x30mm 标签预览。
+- 打印机搜索可手动停止，20 秒后也会自动停止。
+- 可开启启动自动连接打标机，优先连接上次打印机。
 - 40x30mm 标签模板：左侧三行文字，右侧 Q 级纠错二维码。
 - 扫码页处理物品、重量、库位上下文。
 - 入库、出库、盘点、移库、归档、撤销上一笔。
