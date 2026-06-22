@@ -21,7 +21,7 @@
 ```text
 工作室物品管理/
 ├── mobile_android/      # 新原生 Android 主线
-├── tools/               # 二维码和 payload 测试工具
+├── tools/               # 虚拟货架测试台
 ├── core/                # 早期 Web 检测版的 JS 业务核心，作为参考和测试资料
 ├── app/                 # 早期 Web 检测版 UI，作为参考和工具备份
 ├── android/             # 早期 Android Web 壳工程，历史目录
@@ -65,19 +65,19 @@ compileSdk = 36
 当前 debug APK：
 
 ```text
-studio-inventory-native-0.3.3-debug.apk
+studio-inventory-native-0.3.4-debug.apk
 ```
 
 ## tools/
 
-`tools/` 是测试页，不是正式库存软件。
+`tools/` 是虚拟货架测试台，不是正式库存软件。
 
 | 文件 | 职责 |
 |---|---|
-| `index.html` | 测试工具页面 |
-| `tools.js` | 生成和验证 `msi:v1` 测试 payload |
+| `index.html` | 虚拟货架、测试库位、测试物品和重量码页面 |
+| `tools.js` | 生成 `v1;` 测试二维码和推荐扫码顺序 |
 
-第一版手机 app 的新增页也会生成 `msi:v1`，但电脑 Web 测试工具仍然适合做批量验证和后续打印实验。
+电脑 Web 测试工具只模拟真实现场：货架、标签、重量二维码。它不提供复制 payload 或手动输入入口。
 
 ## core/ 和 app/
 
@@ -87,9 +87,9 @@ studio-inventory-native-0.3.3-debug.apk
 
 - 旧逻辑可以作为 Kotlin 业务规则的参考。
 - `tests/` 里仍有部分流程用例可迁移。
-- `tools/` 和 Web 检测页仍方便生成测试数据。
+- `tools/` 仍方便模拟已贴标签的测试现场。
 
-新 Android app 可以直接用 Kotlin 实现业务规则；硬约束是 `msi:v1` 字段语义和文档一致。
+新 Android app 可以直接用 Kotlin 实现业务规则；硬约束是 `v1` 字段语义和文档一致。
 
 ## mobile_flutter/
 
@@ -112,6 +112,6 @@ studio-inventory-native-0.3.3-debug.apk
 当前建议从这里开始：
 
 1. [13-native-android-v1-plan.md](./13-native-android-v1-plan.md)
-2. [12-msi-v1-and-0.2-scope.md](./12-msi-v1-and-0.2-scope.md)
+2. [12-v1-protocol-and-scope.md](./12-v1-protocol-and-scope.md)
 3. [01-qr-input-workflows.md](./01-qr-input-workflows.md)
 4. [09-operation-button-logic.md](./09-operation-button-logic.md)

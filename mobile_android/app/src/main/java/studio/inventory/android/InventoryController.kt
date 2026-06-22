@@ -48,7 +48,7 @@ class InventoryController(context: Context) {
     var snapshot by mutableStateOf(InventorySnapshot())
         private set
 
-    var message by mutableStateOf("扫 msi:v1 物品、重量或库位码。")
+    var message by mutableStateOf("扫 v1 物品、重量或库位码。")
         private set
 
     var pendingItem by mutableStateOf<FixedData?>(null)
@@ -92,9 +92,9 @@ class InventoryController(context: Context) {
         val clean = payload.trim()
         if (clean.isEmpty()) return
         addScanLog(clean)
-        val parsed = parseMsiPayload(clean)
+        val parsed = parseV1Payload(clean)
         if (parsed.type == null) {
-            message = "无法识别，只支持 msi:v1。"
+            message = "无法识别，只支持 v1。"
             return
         }
 
@@ -107,25 +107,6 @@ class InventoryController(context: Context) {
 
     fun reportError(text: String) {
         message = text
-    }
-
-    fun setManualWeight(value: Double) {
-        handleWeight(value)
-        addScanLog("manual:weight=${value.gText()}")
-    }
-
-    fun setManualQty(value: Int) {
-        if (value <= 0) {
-            message = "数量必须大于 0。"
-            return
-        }
-        if (pendingQty != null && pendingQty != value) {
-            replaceCandidate = ReplaceCandidate(CandidateKind.Quantity, qty = value)
-            message = "已有待处理数量，确认后才替换。"
-            return
-        }
-        pendingQty = value
-        message = "已收到数量 $value。"
     }
 
     private fun handleWeight(value: Double?) {

@@ -15,13 +15,16 @@ testBridgeRegistration();
 console.log("scanner-port tests passed");
 
 function testNormalizeString() {
-  assert.equal(normalizeScanResult(" spool:PLA-BLK-001 "), "spool:PLA-BLK-001");
+  assert.equal(
+    normalizeScanResult(" v1;type=spool;id=PLA-BLK-001;brand=Bambu;material=PLA;color=black;tare_g=200 "),
+    "v1;type=spool;id=PLA-BLK-001;brand=Bambu;material=PLA;color=black;tare_g=200",
+  );
 }
 
 function testNormalizeScannerObject() {
-  assert.equal(normalizeScanResult({ rawValue: "part:M3-INSERT" }), "part:M3-INSERT");
-  assert.equal(normalizeScanResult({ text: "weight:712.4" }), "weight:712.4");
-  assert.equal(normalizeScanResult({ payload: "location:RACK-A01" }), "location:RACK-A01");
+  assert.equal(normalizeScanResult({ rawValue: "v1;type=part;id=M3-INSERT;name=M3 热熔螺母" }), "v1;type=part;id=M3-INSERT;name=M3 热熔螺母");
+  assert.equal(normalizeScanResult({ text: "v1;type=weight;value_g=712.4" }), "v1;type=weight;value_g=712.4");
+  assert.equal(normalizeScanResult({ payload: "v1;type=location;id=RACK-A01;name=A01 库位" }), "v1;type=location;id=RACK-A01;name=A01 库位");
 }
 
 function testRejectInvalidResult() {
@@ -33,10 +36,10 @@ function testPortCallback() {
   const seen = [];
   const port = createScannerPort((payload) => seen.push(payload));
 
-  const payload = port.push({ value: "spool:PLA-BLK-001" });
+  const payload = port.push({ value: "v1;type=spool;id=PLA-BLK-001;brand=Bambu;material=PLA;color=black;tare_g=200" });
 
-  assert.equal(payload, "spool:PLA-BLK-001");
-  assert.deepEqual(seen, ["spool:PLA-BLK-001"]);
+  assert.equal(payload, "v1;type=spool;id=PLA-BLK-001;brand=Bambu;material=PLA;color=black;tare_g=200");
+  assert.deepEqual(seen, ["v1;type=spool;id=PLA-BLK-001;brand=Bambu;material=PLA;color=black;tare_g=200"]);
 }
 
 function testBridgeRegistration() {
@@ -45,8 +48,8 @@ function testBridgeRegistration() {
   const port = createScannerPort((payload) => seen.push(payload));
 
   registerScannerBridge(fakeWindow, port);
-  fakeWindow.StudioInventoryScanner.push({ data: "weight:256" });
-  fakeWindow.StudioInventory.handleScanPayload("spool:PLA-BLK-001");
+  fakeWindow.StudioInventoryScanner.push({ data: "v1;type=weight;value_g=256" });
+  fakeWindow.StudioInventory.handleScanPayload("v1;type=spool;id=PLA-BLK-001;brand=Bambu;material=PLA;color=black;tare_g=200");
 
-  assert.deepEqual(seen, ["weight:256", "spool:PLA-BLK-001"]);
+  assert.deepEqual(seen, ["v1;type=weight;value_g=256", "v1;type=spool;id=PLA-BLK-001;brand=Bambu;material=PLA;color=black;tare_g=200"]);
 }

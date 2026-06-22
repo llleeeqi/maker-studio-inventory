@@ -2,14 +2,14 @@
 
 ## 输入协议
 
-第一版只认 `msi:v1`，不兼容旧短码。
+第一版只认 `v1;`，不兼容旧短码和 `msi:v1;`。
 
 ```text
-msi:v1;type=spool;id=FIL-260617-001;brand=Bambu;material=PLA;color=white;tare_g=200
-msi:v1;type=part;id=PART-260617-001;name=M3x8黑色圆头螺丝;category=screw;spec=M3x8;unit_weight_g=0.42
-msi:v1;type=other;id=ITEM-260617-001;name=热风枪
-msi:v1;type=location;id=LOC-260617-001;name=A架第一层
-msi:v1;type=weight;value_g=712.4
+v1;type=spool;id=FIL-260617-001;brand=Bambu;material=PLA;color=white;tare_g=200;created_on=260622;note=备注
+v1;type=part;id=PART-260617-001;name=M3x8黑色圆头螺丝;unit_weight_g=0.42;created_on=260622;note=备注
+v1;type=other;id=ITEM-260617-001;name=热风枪;created_on=260622;note=备注
+v1;type=location;id=LOC-260617-001;name=A架第一层;created_on=260622;note=备注
+v1;type=weight;value_g=712.4
 ```
 
 扫码模块只负责识别二维码字符串；库存逻辑只处理 payload。
@@ -62,7 +62,7 @@ current_g > tare_g
 库位码
 ```
 
-数量可以手动输入，也可以通过总重量和 `unit_weight_g` 换算。
+数量通过总重量和 `unit_weight_g` 换算。
 
 ## 出库和盘点
 
@@ -97,6 +97,4 @@ current_g > tare_g
 
 ## 手动兜底
 
-重量和数量允许手动输入兜底，但主流程仍然优先扫码。
-
-手动输入不用于绕过必填字段。标签缺必填字段时，应重新生成标签并换新标签。
+正常流程不提供手动输入兜底。标签缺必填字段时，应重新生成标签并换新标签。

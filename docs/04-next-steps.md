@@ -12,7 +12,7 @@ mobile_android/
 
 - Compose 四页：扫码 / 库存 / 新增 / 流水。
 - CameraX + ML Kit 页面内二维码扫码。
-- `msi:v1` parser 和 payload builder。
+- `v1;` parser 和 payload builder。
 - JSON 本地保存。
 - 入库、出库、盘点、移库、归档、撤销上一笔。
 - 库位整理模式。
@@ -20,7 +20,7 @@ mobile_android/
 当前 debug APK：
 
 ```text
-studio-inventory-native-0.3.3-debug.apk
+studio-inventory-native-0.3.4-debug.apk
 ```
 
 ## 构建配置
@@ -47,7 +47,7 @@ JSON snapshot
 
 ## 下一步
 
-1. 真机安装 `studio-inventory-native-0.3.3-debug.apk`。
+1. 真机安装 `studio-inventory-native-0.3.4-debug.apk`。
 2. 测新增页生成 payload、扫码页识别、入库、出库、库位整理。
 3. 修真机相机预览、识别速度和 UI 卡点。
 4. 增加 JSON 导出/导入入口。
@@ -57,9 +57,9 @@ JSON snapshot
 
 1. 创建 `mobile_android/` 原生 Android 工程。
 2. 建立四个底部导航：扫码 / 库存 / 新增 / 流水。
-3. 实现 `msi:v1` parser 和 payload builder。
+3. 实现 `v1` parser 和 payload builder。
 4. 实现本地 JSON store：`items / transactions / scan_log`。
-5. 实现新增页标签生成器：自动 ID、复制 payload、打印占位。
+5. 实现新增页标签生成器：自动 ID、德佟 LPAPI 打印骨架。
 6. 实现扫码页内嵌 CameraX 预览和 ML Kit 二维码识别。
 7. 实现入库上下文：物品、重量/数量、库位，冲突时默认不替换。
 8. 实现入库、出库、盘点、移库、归档和撤销上一笔。
@@ -74,7 +74,7 @@ JSON snapshot
 SQLite/Room
 WebDAV 同步
 正式签名
-蓝牙打印
+真机验证蓝牙打印
 Docker 服务端
 PWA
 自然语言助手

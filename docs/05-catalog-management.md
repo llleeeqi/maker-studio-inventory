@@ -6,9 +6,8 @@
 
 ```text
 填写固定信息
-生成 msi:v1 payload
-打印占位
-复制 payload
+生成 v1 标签
+打印 40x30mm 标签
 ```
 
 新增页不写本地库存 JSON。真正写入发生在扫码页点击入库之后。
@@ -48,8 +47,7 @@ brand + material + color
 可选：
 
 ```text
-full_g
-net_g
+created_on
 note
 ```
 
@@ -68,15 +66,13 @@ note
 type=part
 id
 name
-category
-spec
+unit_weight_g
 ```
 
 可选：
 
 ```text
-color
-unit_weight_g
+created_on
 note
 ```
 
@@ -114,6 +110,18 @@ name
 type=weight
 value_g
 ```
+
+## 40x30mm 打印模板
+
+标签左侧只放三行人眼可读文字，不带字段名前缀：
+
+```text
+名称或 material color brand
+YYYY-MM-DD
+备注
+```
+
+二维码在右侧，内容仍是 `v1;key=value`，日期字段用 `YYMMDD`。
 
 ## 缺字段处理
 

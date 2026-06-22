@@ -13,7 +13,7 @@ mobile_android/
 当前工程已创建，debug APK 已构建：
 
 ```text
-studio-inventory-native-0.3.3-debug.apk
+studio-inventory-native-0.3.4-debug.apk
 ```
 
 ## 技术边界
@@ -54,12 +54,12 @@ compileSdk: 36
 |---|---|
 | 扫码 | 内嵌相机扫码，处理入库、出库、盘点、移库和库位整理 |
 | 库存 | 搜索和查看本地库存记录，默认显示在库 |
-| 新增 | 生成不含变量的 `msi:v1` 标签 payload，打印先占位 |
+| 新增 | 生成不含变量的 `v1;` 标签并打印 40x30mm 标签 |
 | 流水 | 查看最近写操作，支持撤销上一笔 |
 
 ## 二维码协议
 
-第一版只认 `msi:v1`，不兼容旧短码。
+第一版只认 `v1;`，不兼容旧短码和 `msi:v1;`。
 
 支持类型：
 
@@ -147,8 +147,7 @@ FIL-YYMMDD-###
 ```text
 id
 name
-category
-spec
+unit_weight_g
 ```
 
 零件主变量是数量。`unit_weight_g` 可选；如果要用总重量换算数量，则必须有 `unit_weight_g`。
@@ -187,9 +186,9 @@ LOC-YYMMDD-###
 
 ```text
 填写固定信息
-生成 msi:v1 payload
-打印占位
-复制 payload
+生成 v1 payload
+搜索/连接德佟蓝牙打印机
+打印 40x30mm 标签
 ```
 
 不做：
@@ -197,8 +196,6 @@ LOC-YYMMDD-###
 ```text
 保存纯档案
 保存并入库
-蓝牙打印
-标签模板
 二维码图片导出
 ```
 
@@ -256,8 +253,7 @@ usable_g = current_g - tare_g
 数量来源：
 
 ```text
-手动输入数量
-或 总重量 / unit_weight_g 向下取整
+总重量 / unit_weight_g 向下取整
 ```
 
 所有普通写操作都要按钮确认：

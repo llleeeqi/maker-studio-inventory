@@ -37,8 +37,8 @@ compileSdk = 36
 第一版只做 Android 本地闭环：
 
 - 页面内嵌相机扫码，只识别二维码。
-- 只支持 `msi:v1`，不兼容旧短码。
-- 新增页只生成标签 payload，打印先占位。
+- 只支持 `v1;`，不兼容旧短码和 `msi:v1;`。
+- 新增页生成固定标签，并接入德佟 LPAPI 打印骨架。
 - 扫物品码只展示固定信息，不自动写库存。
 - 入库必须补齐物品、重量/数量和库位，并点击确认。
 - 库位整理模式允许进入后连续扫码自动更新库位。
@@ -49,17 +49,17 @@ compileSdk = 36
 长期协议：
 
 ```text
-msi:v1;key=value;key=value
+v1;key=value;key=value
 ```
 
 示例：
 
 ```text
-msi:v1;type=spool;id=FIL-260617-001;brand=Bambu;material=PLA;color=white;tare_g=200
-msi:v1;type=part;id=PART-260617-001;name=M3x8黑色圆头螺丝;category=screw;spec=M3x8;unit_weight_g=0.42
-msi:v1;type=other;id=ITEM-260617-001;name=热风枪
-msi:v1;type=location;id=LOC-260617-001;name=A架第一层
-msi:v1;type=weight;value_g=712.4
+v1;type=spool;id=FIL-260617-001;brand=Bambu;material=PLA;color=white;tare_g=200;created_on=260622;note=备注
+v1;type=part;id=PART-260617-001;name=M3x8黑色圆头螺丝;unit_weight_g=0.42;created_on=260622;note=备注
+v1;type=other;id=ITEM-260617-001;name=热风枪;created_on=260622;note=备注
+v1;type=location;id=LOC-260617-001;name=A架第一层;created_on=260622;note=备注
+v1;type=weight;value_g=712.4
 ```
 
 规则：
@@ -76,7 +76,7 @@ msi:v1;type=weight;value_g=712.4
 | 路径 | 作用 |
 |---|---|
 | `mobile_android/` | 新原生 Android 主线，已创建 |
-| `tools/` | `msi:v1` 测试 payload 工具 |
+| `tools/` | 虚拟货架测试台 |
 | `core/` | 早期 Web 检测版 JS 核心，保留作参考 |
 | `app/` | 早期 Web 检测版 UI，保留作参考 |
 | `android/` | 早期 Android Web 壳工程，历史目录 |
@@ -92,7 +92,7 @@ msi:v1;type=weight;value_g=712.4
 
 - [架构决策.md](./架构决策.md)：当前技术路线。
 - [docs/13-native-android-v1-plan.md](./docs/13-native-android-v1-plan.md)：原生 Android v1 总计划。
-- [docs/12-msi-v1-and-0.2-scope.md](./docs/12-msi-v1-and-0.2-scope.md)：`msi:v1` 协议和本地记录边界。
+- [docs/12-v1-protocol-and-scope.md](./docs/12-v1-protocol-and-scope.md)：`v1;` 协议和本地记录边界。
 - [docs/01-qr-input-workflows.md](./docs/01-qr-input-workflows.md)：扫码输入流程。
 - [docs/04-next-steps.md](./docs/04-next-steps.md)：下一阶段开发清单。
 
@@ -100,7 +100,7 @@ msi:v1;type=weight;value_g=712.4
 
 近期：
 
-1. 真机测试原生 debug APK：`studio-inventory-native-0.3.3-debug.apk`。
+1. 真机测试原生 debug APK：`studio-inventory-native-0.3.4-debug.apk`。
 2. 根据真机反馈修扫码预览、入库上下文和库位整理细节。
 3. 补导出/导入 JSON。
 4. 流程稳定后迁 SQLite/Room。
@@ -111,4 +111,4 @@ msi:v1;type=weight;value_g=712.4
 - 导出/导入和备份。
 - WebDAV 或其他同步。
 - 正式签名。
-- 打印能力。
+- 真机验证打印能力。

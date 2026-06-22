@@ -71,16 +71,16 @@
           <details class="manual-scan">
             <summary>手动补录和测试</summary>
             <div class="scan-input">
-              <input id="scanText" autocomplete="off" placeholder="payload：spool:PLA-BLK-001 / weight:712.4 / location:RACK-A01" />
+              <input id="scanText" autocomplete="off" placeholder="payload：v1;type=spool;id=PLA-BLK-001 / v1;type=weight;value_g=712.4 / v1;type=location;id=RACK-A01" />
               <button id="scanSubmit">处理</button>
             </div>
 
             <div class="quick-payloads">
-              <button data-payload="spool:PLA-BLK-001">黑 PLA 卷</button>
-              <button data-payload="weight:712.4">重量 712.4g</button>
-              <button data-payload="part:M3-INSERT">M3 螺母</button>
-              <button data-payload="weight:256.0">重量 256g</button>
-              <button data-payload="location:RACK-A01">A01 库位</button>
+              <button data-payload="v1;type=spool;id=PLA-BLK-001;brand=Bambu;material=PLA;color=black;tare_g=178;created_on=260613">黑 PLA 卷</button>
+              <button data-payload="v1;type=weight;value_g=712.4">重量 712.4g</button>
+              <button data-payload="v1;type=part;id=M3-INSERT;name=M3 热熔螺母;unit_weight_g=0.27;created_on=260613">M3 螺母</button>
+              <button data-payload="v1;type=weight;value_g=256.0">重量 256g</button>
+              <button data-payload="v1;type=location;id=RACK-A01;name=A01 库位;created_on=260613">A01 库位</button>
             </div>
           </details>
 
@@ -160,7 +160,7 @@
               <div class="scanner-frame" aria-hidden="true"></div>
             </div>
             <div class="scan-input compact-input">
-              <input id="catalogScanText" autocomplete="off" placeholder="spool:PLA-BLK-001 / weight:712.4 / location:RACK-A01" />
+              <input id="catalogScanText" autocomplete="off" placeholder="v1;type=spool;id=PLA-BLK-001 / v1;type=weight;value_g=712.4 / v1;type=location;id=RACK-A01" />
               <button id="catalogScanSubmit" type="button">填入</button>
             </div>
           </div>

@@ -2,6 +2,11 @@
 
 package studio.inventory.android
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,7 +24,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -31,7 +35,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,8 +46,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -55,7 +58,6 @@ private const val ScannerIdlePauseMs = 20_000L
 fun ScanPage(controller: InventoryController, modifier: Modifier = Modifier) {
     var scannerRunning by remember { mutableStateOf(false) }
     var torchOn by remember { mutableStateOf(false) }
-    var manualOpen by remember { mutableStateOf(false) }
     var lastScannerActivityAt by remember { mutableLongStateOf(0L) }
 
     fun startScanner() {
@@ -118,7 +120,6 @@ fun ScanPage(controller: InventoryController, modifier: Modifier = Modifier) {
                 OutlinedButton(onClick = { torchOn = !torchOn }, enabled = scannerRunning) {
                     Text(if (torchOn) "关灯" else "手电筒")
                 }
-                OutlinedButton(onClick = { manualOpen = true }) { Text("手动输入") }
                 OutlinedButton(onClick = controller::clearContext) { Text("清空") }
             }
         }
@@ -141,23 +142,6 @@ fun ScanPage(controller: InventoryController, modifier: Modifier = Modifier) {
         }
     }
 
-    if (manualOpen) {
-        ManualInputDialog(
-            onDismiss = { manualOpen = false },
-            onPayload = {
-                controller.handlePayload(it)
-                manualOpen = false
-            },
-            onWeight = {
-                controller.setManualWeight(it)
-                manualOpen = false
-            },
-            onQty = {
-                controller.setManualQty(it)
-                manualOpen = false
-            },
-        )
-    }
 }
 
 @Composable
@@ -310,6 +294,7 @@ fun AddLabelPage(
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     var type by remember { mutableStateOf(ItemType.Spool) }
     var id by remember { mutableStateOf(nextAutoId(type, controller.snapshot.items.keys)) }
     var name by remember { mutableStateOf("") }
@@ -317,20 +302,64 @@ fun AddLabelPage(
     var material by remember { mutableStateOf("PLA") }
     var color by remember { mutableStateOf("") }
     var tareG by remember { mutableStateOf("") }
-    var fullG by remember { mutableStateOf("") }
-    var netG by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
-    var spec by remember { mutableStateOf("") }
     var unitWeightG by remember { mutableStateOf("") }
     var weightValue by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var generatedPayload by remember { mutableStateOf("") }
-    val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
+    val printer = remember { LabelPrinterController() }
+    val printerPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { grants ->
+        val denied = printerPermissions().filter { grants[it] == false }
+        if (denied.isEmpty()) {
+            printer.discover()
+        } else {
+            scope.launch {
+                snackbarHostState.showSnackbar("缺少蓝牙或定位权限，不能搜索打印机。")
+            }
+        }
+    }
 
     LaunchedEffect(type) {
         id = nextAutoId(type, controller.snapshot.items.keys)
         generatedPayload = ""
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { printer.close() }
+    }
+
+    fun ensurePrinterPermissions(onGranted: () -> Unit) {
+        val missing = printerPermissions().filter {
+            context.checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isEmpty()) {
+            onGranted()
+        } else {
+            printerPermissionLauncher.launch(missing.toTypedArray())
+        }
+    }
+
+    fun currentLabel(): PrintLabelData {
+        val payload = buildLabelPayload(
+            type = type,
+            id = id,
+            name = name,
+            brand = brand,
+            material = material,
+            color = color,
+            tareG = tareG,
+            unitWeightG = unitWeightG,
+            weightValue = weightValue,
+            note = note,
+        )
+        return PrintLabelData(
+            payload = payload,
+            line1 = labelTitleLine(type, name, brand, material, color, weightValue),
+            line2 = todayDisplayDate(),
+            line3 = note.ifBlank { " " },
+        )
     }
 
     Column(
@@ -359,15 +388,12 @@ fun AddLabelPage(
                 FormTextField("材料 material", material, { material = it })
                 FormTextField("颜色 color", color, { color = it })
                 NumberTextField("空盘重量 tare_g", tareG, { tareG = it })
-                NumberTextField("满卷总重 full_g（可选）", fullG, { fullG = it })
-                NumberTextField("标称净重 net_g（可选）", netG, { netG = it })
+                FormTextField("备注 note（可选）", note, { note = it })
             }
             ItemType.Part -> {
                 FormTextField("名称 name", name, { name = it })
-                FormTextField("类别 category", category, { category = it })
-                FormTextField("规格 spec", spec, { spec = it })
-                FormTextField("颜色 color（可选）", color, { color = it })
-                NumberTextField("单件重量 unit_weight_g（可选）", unitWeightG, { unitWeightG = it })
+                NumberTextField("单件重量 unit_weight_g", unitWeightG, { unitWeightG = it })
+                FormTextField("备注 note（可选）", note, { note = it })
             }
             ItemType.Other -> {
                 FormTextField("名称 name", name, { name = it })
@@ -386,54 +412,34 @@ fun AddLabelPage(
                 Text("生成 ID")
             }
             Button(onClick = {
-                generatedPayload = buildLabelPayload(
-                    type = type,
-                    id = id,
-                    name = name,
-                    brand = brand,
-                    material = material,
-                    color = color,
-                    tareG = tareG,
-                    fullG = fullG,
-                    netG = netG,
-                    category = category,
-                    spec = spec,
-                    unitWeightG = unitWeightG,
-                    weightValue = weightValue,
-                    note = note,
-                )
+                generatedPayload = currentLabel().payload
             }) {
-                Text("生成 payload")
+                Text("生成标签")
             }
-            OutlinedButton(onClick = {
-                if (generatedPayload.isNotBlank()) {
-                    clipboard.setText(AnnotatedString(generatedPayload))
-                }
-            }) { Text("复制") }
             OutlinedButton(onClick = {
                 generatedPayload = ""
                 name = ""
                 brand = ""
                 color = ""
                 tareG = ""
-                fullG = ""
-                netG = ""
-                category = ""
-                spec = ""
                 unitWeightG = ""
                 weightValue = ""
                 note = ""
             }) { Text("清空") }
             OutlinedButton(onClick = {
-                scope.launch {
-                    snackbarHostState.showSnackbar("打印先占位，后面接打印能力。")
-                }
+                ensurePrinterPermissions { printer.discover() }
+            }) { Text("搜索打印机") }
+            OutlinedButton(onClick = {
+                val label = currentLabel()
+                generatedPayload = label.payload
+                ensurePrinterPermissions { printer.print(label) }
             }) { Text("打印") }
         }
+        PrinterPanel(printer)
         if (generatedPayload.isNotBlank()) {
             ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("生成结果", style = MaterialTheme.typography.titleMedium)
+                    Text("二维码内容", style = MaterialTheme.typography.titleMedium)
                     Text(generatedPayload)
                 }
             }
@@ -464,39 +470,6 @@ fun TransactionsPage(controller: InventoryController, modifier: Modifier = Modif
 }
 
 @Composable
-private fun ManualInputDialog(
-    onDismiss: () -> Unit,
-    onPayload: (String) -> Unit,
-    onWeight: (Double) -> Unit,
-    onQty: (Int) -> Unit,
-) {
-    var payload by remember { mutableStateOf("") }
-    var weight by remember { mutableStateOf("") }
-    var qty by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("手动兜底") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                FormTextField("payload", payload, { payload = it })
-                NumberTextField("重量 g", weight, { weight = it })
-                NumberTextField("数量", qty, { qty = it })
-            }
-        },
-        confirmButton = {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = { onPayload(payload) }, enabled = payload.isNotBlank()) { Text("处理 payload") }
-                TextButton(onClick = { weight.toDoubleOrNull()?.let(onWeight) }, enabled = weight.toDoubleOrNull() != null) { Text("填重量") }
-                TextButton(onClick = { qty.toIntOrNull()?.let(onQty) }, enabled = qty.toIntOrNull() != null) { Text("填数量") }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        },
-    )
-}
-
-@Composable
 private fun InfoRow(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth()) {
         Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(72.dp))
@@ -516,6 +489,34 @@ private fun ListCard(title: String, subtitle: String, footer: String = "") {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrinterPanel(printer: LabelPrinterController) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("标签打印机", style = MaterialTheme.typography.titleMedium)
+            Text(printer.status)
+            if (printer.printers.isNotEmpty()) {
+                HorizontalDivider()
+                printer.printers.forEach { address ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(address.shownName.ifBlank { "未知打印机" })
+                            Text(address.macAddress.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        OutlinedButton(onClick = { printer.connect(address) }) {
+                            Text(if (printer.connectedPrinter?.key() == address.key()) "已连接" else "连接")
+                        }
+                    }
+                }
             }
         }
     }
@@ -552,10 +553,6 @@ private fun buildLabelPayload(
     material: String,
     color: String,
     tareG: String,
-    fullG: String,
-    netG: String,
-    category: String,
-    spec: String,
     unitWeightG: String,
     weightValue: String,
     note: String,
@@ -568,28 +565,62 @@ private fun buildLabelPayload(
             fields["material"] = material
             fields["color"] = color
             fields["tare_g"] = tareG
-            fields["full_g"] = fullG
-            fields["net_g"] = netG
-            fields["name"] = listOf(brand, material, color).filter { it.isNotBlank() }.joinToString(" ")
+            fields["created_on"] = todayCode()
             fields["note"] = note
         }
         ItemType.Part -> {
             fields["id"] = id.trim().uppercase()
             fields["name"] = name
-            fields["category"] = category
-            fields["spec"] = spec
-            fields["color"] = color
             fields["unit_weight_g"] = unitWeightG
+            fields["created_on"] = todayCode()
             fields["note"] = note
         }
         ItemType.Other, ItemType.Location -> {
             fields["id"] = id.trim().uppercase()
             fields["name"] = name
+            fields["created_on"] = todayCode()
             fields["note"] = note
         }
         ItemType.Weight -> {
             fields["value_g"] = weightValue
         }
     }
-    return buildMsiPayload(fields)
+    return buildV1Payload(fields)
+}
+
+private fun labelTitleLine(
+    type: ItemType,
+    name: String,
+    brand: String,
+    material: String,
+    color: String,
+    weightValue: String,
+): String {
+    return when (type) {
+        ItemType.Spool -> listOf(material, color, brand).filter { it.isNotBlank() }.joinToString(" ")
+        ItemType.Weight -> weightValue.trim().ifBlank { "0" } + "g"
+        else -> name.trim()
+    }.ifBlank { type.label }
+}
+
+private fun todayDisplayDate(): String {
+    val code = todayCode()
+    return "20${code.substring(0, 2)}-${code.substring(2, 4)}-${code.substring(4, 6)}"
+}
+
+private fun printerPermissions(): List<String> {
+    val permissions = mutableListOf(
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION,
+    )
+    if (Build.VERSION.SDK_INT >= 31) {
+        permissions += Manifest.permission.BLUETOOTH_SCAN
+        permissions += Manifest.permission.BLUETOOTH_CONNECT
+    } else {
+        @Suppress("DEPRECATION")
+        permissions += Manifest.permission.BLUETOOTH
+        @Suppress("DEPRECATION")
+        permissions += Manifest.permission.BLUETOOTH_ADMIN
+    }
+    return permissions
 }

@@ -51,23 +51,16 @@ export function createDemoState() {
 
 export function parsePayload(text) {
   const payload = String(text || "").trim();
-  if (payload.toLowerCase().startsWith("msi:v1;")) {
-    return parseMsiPayload(payload);
+  if (payload.toLowerCase().startsWith("v1;")) {
+    return parseV1Payload(payload);
   }
 
-  const index = payload.indexOf(":");
-  if (index < 1) {
-    return { type: "unknown", value: payload, raw: payload };
-  }
-
-  const type = payload.slice(0, index).trim().toLowerCase();
-  const value = payload.slice(index + 1).trim();
-  return { type, value, raw: payload };
+  return { type: "unknown", value: payload, raw: payload };
 }
 
-function parseMsiPayload(payload) {
+function parseV1Payload(payload) {
   const fields = {};
-  for (const segment of payload.slice("msi:v1;".length).split(";")) {
+  for (const segment of payload.slice("v1;".length).split(";")) {
     if (!segment) continue;
     const index = segment.indexOf("=");
     if (index <= 0) continue;
@@ -80,7 +73,7 @@ function parseMsiPayload(payload) {
   if (type === "weight") {
     return {
       type,
-      value: fields.value_g || fields.weight_g || fields.value || "",
+      value: fields.value_g || "",
       raw: payload,
       fields,
     };

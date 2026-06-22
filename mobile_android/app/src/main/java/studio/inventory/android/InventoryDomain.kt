@@ -17,6 +17,8 @@ enum class ItemType(val payload: String, val label: String) {
     }
 }
 
+private const val PayloadPrefix = "v1"
+
 enum class StockStatus(val value: String, val label: String) {
     InStock("in_stock", "在库"),
     CheckedOut("checked_out", "已出库"),
@@ -77,8 +79,7 @@ data class FixedData(
             }
             ItemType.Part -> {
                 if (displayName.isBlank()) missing += "name"
-                if (category.isBlank()) missing += "category"
-                if (spec.isBlank()) missing += "spec"
+                if (unitWeightG == null || unitWeightG <= 0.0) missing += "unit_weight_g"
             }
             ItemType.Other -> {
                 if (displayName.isBlank()) missing += "name"
@@ -190,9 +191,9 @@ data class LocationValue(
     val name: String,
 )
 
-fun parseMsiPayload(raw: String): ParsedPayload {
+fun parseV1Payload(raw: String): ParsedPayload {
     val text = raw.trim()
-    if (!text.lowercase().startsWith("msi:v1;")) {
+    if (!text.lowercase().startsWith("$PayloadPrefix;")) {
         return ParsedPayload(type = null, fields = emptyMap(), raw = raw)
     }
 
@@ -272,8 +273,8 @@ fun parseMsiPayload(raw: String): ParsedPayload {
     }
 }
 
-fun buildMsiPayload(fields: Map<String, String>): String {
-    val buffer = StringBuilder("msi:v1")
+fun buildV1Payload(fields: Map<String, String>): String {
+    val buffer = StringBuilder(PayloadPrefix)
     fields.forEach { (key, value) ->
         val clean = value.trim()
         if (clean.isNotEmpty()) {

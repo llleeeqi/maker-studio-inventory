@@ -1,8 +1,8 @@
-# msi:v1 协议和本地记录边界
+# v1 协议和本地记录边界
 
 ## 结论
 
-第一版只支持 `msi:v1`。
+第一版只支持 `v1;` 前缀，不兼容旧短码和 `msi:v1;`。
 
 二维码是固定信息载体，本地 JSON 是库存事实载体。
 
@@ -14,7 +14,7 @@
 ## 基本格式
 
 ```text
-msi:v1;key=value;key=value
+v1;key=value;key=value
 ```
 
 规则：
@@ -42,7 +42,7 @@ msi:v1;key=value;key=value
 示例：
 
 ```text
-msi:v1;type=spool;id=FIL-260617-001;brand=Bambu;material=PLA;color=white;tare_g=200
+v1;type=spool;id=FIL-260617-001;brand=Bambu;material=PLA;color=white;tare_g=200;created_on=260622;note=备注
 ```
 
 必填：
@@ -59,9 +59,7 @@ msi:v1;type=spool;id=FIL-260617-001;brand=Bambu;material=PLA;color=white;tare_g=
 可选：
 
 ```text
-name
-full_g
-net_g
+created_on
 note
 ```
 
@@ -76,7 +74,7 @@ brand + material + color
 示例：
 
 ```text
-msi:v1;type=part;id=PART-260617-001;name=M3x8黑色圆头螺丝;category=screw;spec=M3x8;unit_weight_g=0.42
+v1;type=part;id=PART-260617-001;name=M3x8黑色圆头螺丝;unit_weight_g=0.42;created_on=260622;note=备注
 ```
 
 必填：
@@ -86,14 +84,12 @@ msi:v1;type=part;id=PART-260617-001;name=M3x8黑色圆头螺丝;category=screw;s
 | `type=part` | 零件 |
 | `id` | 每张实体标签唯一 ID |
 | `name` | 名称 |
-| `category` | 类别 |
-| `spec` | 规格 |
+| `unit_weight_g` | 单件重量，用于总重量换算数量 |
 
 可选：
 
 ```text
-color
-unit_weight_g
+created_on
 note
 ```
 
@@ -104,7 +100,7 @@ note
 示例：
 
 ```text
-msi:v1;type=other;id=ITEM-260617-001;name=热风枪
+v1;type=other;id=ITEM-260617-001;name=热风枪;created_on=260622;note=备注
 ```
 
 必填：
@@ -120,7 +116,7 @@ name
 示例：
 
 ```text
-msi:v1;type=location;id=LOC-260617-001;name=A架第一层
+v1;type=location;id=LOC-260617-001;name=A架第一层;created_on=260622;note=备注
 ```
 
 库位可以是货架一层、箱子、抽屉、托盘或任意容器。
@@ -138,7 +134,7 @@ name
 示例：
 
 ```text
-msi:v1;type=weight;value_g=712.4
+v1;type=weight;value_g=712.4
 ```
 
 必填：

@@ -13,5 +13,5 @@
 | [07-core-shell-boundary.md](./07-core-shell-boundary.md) | 原生 Android app、业务核心和测试工具边界 |
 | [09-operation-button-logic.md](./09-operation-button-logic.md) | 手机 app 操作入口、按钮含义和写入确认规则 |
 | [10-scan-workbench-redesign.md](./10-scan-workbench-redesign.md) | 扫码台设计：上下文驱动、冲突保护、库位整理 |
-| [12-msi-v1-and-0.2-scope.md](./12-msi-v1-and-0.2-scope.md) | `msi:v1` 二维码协议和本地记录边界 |
+| [12-v1-protocol-and-scope.md](./12-v1-protocol-and-scope.md) | `v1;` 二维码协议和本地记录边界 |
 | [13-native-android-v1-plan.md](./13-native-android-v1-plan.md) | 原生 Android v1 总计划：技术栈、数据、扫码和业务规则 |

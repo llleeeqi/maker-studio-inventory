@@ -11,8 +11,8 @@ android {
         applicationId = "studio.inventory.android"
         minSdk = 31
         targetSdk = 36
-        versionCode = 33
-        versionName = "0.3.3"
+        versionCode = 34
+        versionName = "0.3.4"
     }
 
     buildTypes {
@@ -42,6 +42,7 @@ android {
 }
 
 dependencies {
+    implementation(files("libs/LPAPI-2026-01-08-R.jar"))
     implementation(platform("androidx.compose:compose-bom:2024.10.00"))
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.activity:activity-compose:1.9.3")
