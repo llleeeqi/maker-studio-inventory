@@ -4,11 +4,11 @@
 
 第一版只支持 `v1;` 前缀，不兼容旧短码和 `msi:v1;`。
 
-二维码是固定信息载体，本地 JSON 是库存事实载体。
+二维码是固定信息载体，本地数据库是库存事实载体。
 
 ```text
 标签 payload 不含变量
-本地 item 保存固定字段副本 + 当前变量
+数据库 item 保存固定字段副本 + 当前变量
 ```
 
 ## 基本格式
@@ -37,6 +37,16 @@ v1;key=value;key=value
 盘点日期
 流水记录
 ```
+
+注意这里说的是 **物品二维码不存当前库位**。
+
+库位二维码是另一类标签，只标识库位本身：
+
+```text
+v1;type=location;id=LOC-260617-001;name=A架第一层
+```
+
+物品当前所在库位存在数据库 `items.location_id / items.location_name`。
 
 ## 耗材 spool
 
@@ -145,9 +155,9 @@ type=weight
 value_g
 ```
 
-## 本地 item
+## 数据库 item
 
-本地 item 只在入库后创建。
+数据库 item 只在入库后创建。
 
 ```json
 {
@@ -162,7 +172,8 @@ value_g
   "state": {
     "status": "in_stock",
     "current_g": 712.4,
-    "location_id": "LOC-260617-001"
+    "location_id": "LOC-260617-001",
+    "location_name": "A架第一层"
   }
 }
 ```

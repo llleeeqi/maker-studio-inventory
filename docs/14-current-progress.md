@@ -120,3 +120,11 @@ items: 当前库存表
 transactions: 出入库/盘点/移库等库存事实流水
 scan_logs: 扫码输入事件日志，用于排查和回看
 ```
+
+位置边界:
+
+```text
+物品二维码不存当前位置
+库位二维码只标识库位本身
+物品当前库位存在 items.location_id / items.location_name
+```

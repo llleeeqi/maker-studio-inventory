@@ -25,6 +25,7 @@ id
 type                  spool / part / other
 status                in_stock / checked_out / archived
 location_id
+location_name
 label_created_on
 note
 stocked_at
@@ -32,6 +33,18 @@ updated_at
 checked_out_at
 archived_at
 ```
+
+`location_id / location_name` 是物品当前所在位置，属于库存变量，存在 `items` 表里，不进入物品二维码。
+
+库位二维码只用于识别“这个库位是谁”，例如：
+
+```text
+type=location
+id=LOC-A-01
+name=A架第一层
+```
+
+扫库位码后，App 把库位 ID/名称写入对应 item 的 `location_id / location_name`。
 
 耗材 `spool` 固定字段：
 
