@@ -2,66 +2,134 @@
 
 ## 当前结论
 
-原生 Android v1 先用 JSON snapshot 文件，不上数据库。
+下一版直接起 SQLite/Room 数据库，不再继续扩展 JSON snapshot。
 
-运行方式：
-
-```text
-启动时读取 JSON 到内存
-扫码和按钮操作修改内存
-每次写操作后覆盖保存 JSON 文件
-```
-
-后续换 SQLite/Room 时，把 JSON 作为迁移源导入。
-
-## 本地文件
-
-建议文件：
+第一版数据库先保持轻量：
 
 ```text
-filesDir/inventory_snapshot.json
+items
+transactions
+scan_logs
 ```
 
-建议结构：
+二维码是固定信息来源，数据库里的 `items` 是查库存和保存当前状态的依据。不保存纯标签草稿；只有入库、出库、盘点、移库、归档等写操作会改变库存事实。
 
-```json
-{
-  "schema": 1,
-  "device_id": "android-phone",
-  "items": {},
-  "transactions": [],
-  "scan_log": []
-}
+## items 表
+
+`items` 同时保存标签固定字段副本和当前变量。
+
+公共字段：
+
+```text
+id
+type                  spool / part / other
+status                in_stock / checked_out / archived
+location_id
+label_created_on
+note
+stocked_at
+updated_at
+checked_out_at
+archived_at
 ```
 
-`items` 只保存已入库或曾经入库、出库、归档过的物品。不保存纯标签草稿。
+耗材 `spool` 固定字段：
 
-## item 记录
-
-一条 item 同时保存固定字段副本和当前变量。
-
-```json
-{
-  "id": "FIL-260617-001",
-  "type": "spool",
-  "fixed": {
-    "brand": "Bambu",
-    "material": "PLA",
-    "color": "white",
-    "tare_g": 200
-  },
-  "state": {
-    "status": "in_stock",
-    "current_g": 712.4,
-    "location_id": "LOC-260617-001",
-    "location_name": "A架第一层",
-    "stocked_on": "260617",
-    "updated_at": "2026-06-17T10:00:00+00:00"
-  }
-}
+```text
+brand
+material
+color
+tare_g                空盘/皮重，核心计算参数
 ```
 
-二维码是固定信息来源，本地 item 是查库存和保存当前状态的依据。
+耗材变量字段：
+
+```text
+current_g             当前毛重
+```
+
+不存 `usable_g`，查询时用 `current_g - tare_g` 实时计算。
+
+零件 `part` 固定字段：
+
+```text
+name
+unit_weight_g         单件重量，核心计算参数
+```
+
+零件变量字段：
+
+```text
+current_g             当前总重量/称重值
+current_qty           当前估算或确认数量
+```
+
+零件 `current_qty` 存数据库。它通常由 `current_g / unit_weight_g` 计算，但后续可能需要人工校正。
+
+其他 `other` 固定字段：
+
+```text
+name
+```
+
+其他第一版不保存重量和数量变量；后续如某类其他物品需要数量，再扩展。
+
+## transactions 表
+
+`transactions` 是库存事实变化流水。
+
+写入动作：
+
+```text
+stock_in
+checkout
+stocktake
+move
+archive
+undo
+edit_fixed
+```
+
+建议字段：
+
+```text
+tx_id
+action
+item_id
+item_type
+before_json
+after_json
+created_at
+```
+
+扫码但未确认，不进入 `transactions`。
+
+## scan_logs 表
+
+`scan_logs` 是扫码输入事件日志，不是系统运行日志。
+
+用途：
+
+```text
+判断相机是否识别到了二维码
+判断 payload 是否解析成功
+判断是否因为缺字段、冲突、取消确认而没有写库存
+现场回看最近扫过什么
+```
+
+建议字段：
+
+```text
+scan_id
+raw_payload
+parsed_type           spool / part / other / location / weight / unknown
+parsed_id             物品 ID 或库位 ID，可为空
+result                accepted / rejected / ignored / conflict / cancelled
+message               当时 App 展示的提示
+created_at
+```
+
+扫码但没点确认，不进入 `transactions`，但可以进入 `scan_logs`。
 
 ## 容量策略
 
@@ -70,7 +138,7 @@ filesDir/inventory_snapshot.json
 ```text
 items: 600
 transactions: 350
-scan_log: 50
+scan_logs: 50
 ```
 
 裁剪规则：
@@ -79,7 +147,7 @@ scan_log: 50
 in_stock 不自动删
 items 超过上限时优先裁 archived，再裁 checked_out
 transactions 裁最旧流水
-scan_log 裁最旧扫码记录
+scan_logs 裁最旧扫码记录
 ```
 
 ## 撤销
@@ -94,16 +162,15 @@ scan_log 裁最旧扫码记录
 
 只保证本次运行期最近一笔可撤销；重启后不强制保留撤销能力。
 
-## 后续数据库迁移
+## JSON 迁移
 
-流程跑通后再上 SQLite/Room。
-
-迁移方式：
+现有测试版如已有 `inventory_snapshot.json`，数据库上线时可以作为一次性迁移源：
 
 ```text
 读取 inventory_snapshot.json
 逐条导入 items
 逐条导入 transactions
+scan_log 导入 scan_logs 或丢弃
 保留 snapshot 备份
 ```
 
