@@ -15,3 +15,4 @@
 | [10-scan-workbench-redesign.md](./10-scan-workbench-redesign.md) | 扫码台设计：上下文驱动、冲突保护、库位整理 |
 | [12-v1-protocol-and-scope.md](./12-v1-protocol-and-scope.md) | `v1;` 二维码协议和本地记录边界 |
 | [13-native-android-v1-plan.md](./13-native-android-v1-plan.md) | 原生 Android v1 总计划：技术栈、数据、扫码和业务规则 |
+| [14-current-progress.md](./14-current-progress.md) | 当前实测进度、暂缓事项和上下文恢复入口 |

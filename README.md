@@ -101,13 +101,14 @@ v1;type=weight;value_g=712.4
 - [docs/12-v1-protocol-and-scope.md](./docs/12-v1-protocol-and-scope.md)：`v1;` 协议和本地记录边界。
 - [docs/01-qr-input-workflows.md](./docs/01-qr-input-workflows.md)：扫码输入流程。
 - [docs/04-next-steps.md](./docs/04-next-steps.md)：下一阶段开发清单。
+- [docs/14-current-progress.md](./docs/14-current-progress.md)：当前实测进度和上下文恢复入口。
 
 ## 后续方向
 
 近期：
 
-1. 真机测试原生 debug APK：`studio-inventory-native-0.3.6-debug.apk`。
-2. 根据真机反馈修扫码预览、入库上下文和库位整理细节。
+1. 梳理并确认手机 App 页面按钮、可点击条件和点击后流程。
+2. 按确认后的操作逻辑调整扫码页、库存页、新增页和流水页。
 3. 补导出/导入 JSON。
 4. 流程稳定后迁 SQLite/Room。
 

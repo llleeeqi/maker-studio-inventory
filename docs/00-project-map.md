@@ -113,7 +113,8 @@ studio-inventory-native-0.3.6-debug.apk
 
 当前建议从这里开始：
 
-1. [13-native-android-v1-plan.md](./13-native-android-v1-plan.md)
-2. [12-v1-protocol-and-scope.md](./12-v1-protocol-and-scope.md)
-3. [01-qr-input-workflows.md](./01-qr-input-workflows.md)
-4. [09-operation-button-logic.md](./09-operation-button-logic.md)
+1. [14-current-progress.md](./14-current-progress.md)
+2. [13-native-android-v1-plan.md](./13-native-android-v1-plan.md)
+3. [12-v1-protocol-and-scope.md](./12-v1-protocol-and-scope.md)
+4. [01-qr-input-workflows.md](./01-qr-input-workflows.md)
+5. [09-operation-button-logic.md](./09-operation-button-logic.md)
