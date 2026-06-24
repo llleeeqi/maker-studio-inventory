@@ -203,6 +203,8 @@ ID
 归档
 ```
 
+这里的“必须确认”只表示会改本地数据，不等于都会进入 `transactions`。
+
 库位整理模式是例外：进入整理模式后，连续扫已有库存物品可以自动写库位。
 
 ## 库存页
@@ -257,10 +259,16 @@ ID
 stock_in
 checkout
 stocktake
-move
-archive
 undo
-edit_fixed
 ```
 
-扫码输入事件不进入流水页，进入 `scan_logs`。
+不进入流水页：
+
+```text
+绑定库位
+库位整理
+归档
+固定字段修改
+```
+
+这些动作直接更新 `items`。扫码输入事件和失败原因进入 `scan_logs`。

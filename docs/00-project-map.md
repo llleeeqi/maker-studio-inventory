@@ -13,7 +13,7 @@
 第一版目标是先在 Android 手机上跑通：
 
 ```text
-生成固定标签 -> 扫码 -> 补重量/数量和库位 -> 点确认入库 -> 本地 JSON 保存 -> 查库存/出库/整理库位
+生成固定标签 -> 扫码 -> 补重量/数量和库位 -> 点确认入库 -> 本地数据库保存 -> 查库存/出库/整理库位
 ```
 
 ## 顶层结构
@@ -42,8 +42,10 @@ Kotlin
 Jetpack Compose
 CameraX PreviewView
 ML Kit Barcode Scanning
-JSON snapshot 文件
+SQLite/Room 本地数据库
 ```
+
+当前 0.3.x 测试 APK 仍使用 JSON snapshot；后续主线直接迁到 SQLite/Room。
 
 Android 配置：
 

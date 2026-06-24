@@ -42,7 +42,7 @@ pending_location
 
 ```text
 只展示标签固定信息
-不写本地 JSON
+不写本地数据库
 ```
 
 点入库后才写本地 `items`，并保存固定字段副本和当前变量。
@@ -79,7 +79,7 @@ current_g > tare_g
 所有普通写操作都需要按钮确认：
 
 ```text
-入库 / 出库 / 盘点 / 移库 / 归档
+入库 / 出库 / 盘点 / 绑定库位 / 归档
 ```
 
 ## 库位整理
@@ -91,7 +91,8 @@ current_g > tare_g
 ```text
 连续扫已在本地库存里的物品
 每扫一个自动更新 location
-写 move 流水
+写入 items.location_id
+可写 scan_logs 作为整理成功记录
 震动/声音提示
 ```
 

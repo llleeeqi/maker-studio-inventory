@@ -25,7 +25,7 @@ Kotlin
 Jetpack Compose
 CameraX PreviewView
 ML Kit Barcode Scanning
-JSON snapshot 文件
+SQLite/Room 本地数据库
 ```
 
 Android 配置：
@@ -52,10 +52,10 @@ compileSdk: 36
 
 | 页面 | 职责 |
 |---|---|
-| 扫码 | 内嵌相机扫码，处理入库、出库、盘点、移库和库位整理 |
+| 扫码 | 内嵌相机扫码，处理入库、更新库存、绑定库位和库位整理 |
 | 库存 | 搜索和查看本地库存记录，默认显示在库 |
 | 新增 | 生成不含变量的 `v1;` 标签并打印 40x30mm 标签 |
-| 流水 | 查看最近写操作，支持撤销上一笔 |
+| 流水 | 查看出入库和重量/数量更新，支持撤销上一笔主流水 |
 
 ## 二维码协议
 
@@ -93,12 +93,13 @@ type=weight
 ```text
 扫物品码
   -> 解析并展示标签固定信息
-  -> 不写本地 JSON
+  -> 不写本地数据库
 
 点入库
   -> 写入本地 item 记录
   -> item 内保存标签固定字段副本
-  -> 同时保存当前变量和流水
+  -> 同时保存当前变量
+  -> stock_in 写主流水
 ```
 
 这样后续查库存不依赖再次扫描实体标签；本地记录里会保留查询所需的固定字段。
@@ -150,7 +151,7 @@ name
 unit_weight_g
 ```
 
-零件主变量是数量。`unit_weight_g` 可选；如果要用总重量换算数量，则必须有 `unit_weight_g`。
+零件主变量是数量。`unit_weight_g` 是核心计算参数，标签里有值就预填；缺失时扫码弹窗必须补齐，才能用重量换算数量。
 
 其他 `other`：
 
@@ -262,9 +263,11 @@ usable_g = current_g - tare_g
 入库
 出库
 盘点
-移库
+绑定库位
 归档
 ```
+
+这些动作是否需要确认，和是否进入 `transactions` 是两件事。主流水只记录 `stock_in / checkout / stocktake / undo`。绑定库位、库位整理、归档和固定字段修改直接更新 `items`，不进入主流水。
 
 ## 库位规则
 
@@ -284,7 +287,8 @@ usable_g = current_g - tare_g
 连续扫物品码
 每扫一个已在本地库存里的物品
   -> 自动更新到当前库位
-  -> 写 move 流水
+  -> 更新 items.location_id
+  -> 可写 scan_logs 作为整理成功记录
   -> 震动/声音提示
 ```
 
@@ -294,7 +298,7 @@ usable_g = current_g - tare_g
 
 ```text
 提示未入库，不能整理到库位
-不写本地 JSON
+不写本地数据库
 ```
 
 ## 出库和重新入库
@@ -319,37 +323,28 @@ usable_g = current_g - tare_g
 
 ## 数据存储
 
-第一版使用 JSON snapshot 文件，不上数据库。
+下一版直接使用 SQLite/Room 数据库，不继续扩展 JSON snapshot。
 
-运行方式：
+表：
 
 ```text
-启动时读取 JSON 到内存
-扫码和按钮操作修改内存
-每次写操作后覆盖保存 JSON 文件
+items
+locations
+transactions
+scan_logs
 ```
 
-后续换 SQLite/Room 时，把 JSON snapshot 当迁移源一条条导入。
+现有 0.3.x 测试版 JSON snapshot 只作为一次性迁移源。
 
-建议结构：
-
-```json
-{
-  "schema": 1,
-  "items": {},
-  "transactions": [],
-  "scan_log": []
-}
-```
-
-`items` 记录已入库或曾经入库/出库/归档过的物品，不保存纯标签草稿。
+`items` 记录已入库或曾经入库/出库/归档过的物品，不保存纯标签草稿。`locations` 保存 `location_id -> 中文名称` 映射，物品当前位置存在 `items.location_id`。
 
 容量软上限：
 
 ```text
 items: 600
-transactions: 350
-scan_log: 50
+locations: 100
+transactions: 250
+scan_logs: 50
 ```
 
 裁剪规则：
@@ -357,8 +352,9 @@ scan_log: 50
 ```text
 in_stock 不自动删
 items 超过上限时优先裁 archived，再裁 checked_out
+locations 不主动裁剪，除非用户后续明确删除库位映射
 transactions 裁最旧流水
-scan_log 裁最旧扫码记录
+scan_logs 裁最旧扫码记录
 ```
 
 ## 归档和撤销
@@ -380,9 +376,7 @@ scan_log 裁最旧扫码记录
 ```text
 入库
 出库
-移库/库位整理
 盘点更新重量/数量
-归档
 ```
 
 规则：
@@ -392,3 +386,5 @@ scan_log 裁最旧扫码记录
 app 重启后不保证还能撤销
 撤销也写 transaction=undo
 ```
+
+库位绑定、库位整理、归档和固定字段修改不进入主流水，第一版不纳入撤销主链路。

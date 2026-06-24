@@ -6,7 +6,7 @@
 |---|---|
 | [00-project-map.md](./00-project-map.md) | 项目文件地图：当前主线、历史目录和文件职责 |
 | [01-qr-input-workflows.md](./01-qr-input-workflows.md) | 扫码输入流程：入库、出库、盘点、库位整理 |
-| [03-data-and-sync.md](./03-data-and-sync.md) | 本地 JSON、后续数据库迁移和同步边界 |
+| [03-data-and-sync.md](./03-data-and-sync.md) | 本地 SQLite/Room 数据、测试 JSON 迁移和同步边界 |
 | [04-next-steps.md](./04-next-steps.md) | 下一阶段原生 Android 开发清单 |
 | [05-catalog-management.md](./05-catalog-management.md) | 标签生成、必填字段和 ID 规则 |
 | [06-inventory-filters.md](./06-inventory-filters.md) | 库存搜索、状态筛选和库位筛选 |

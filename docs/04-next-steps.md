@@ -14,7 +14,7 @@ mobile_android/
 - CameraX + ML Kit 页面内二维码扫码。
 - `v1;` parser 和 payload builder。
 - JSON 本地保存。
-- 入库、出库、盘点、移库、归档、撤销上一笔。
+- 入库、出库、盘点、绑定库位、归档、撤销上一笔。
 - 库位整理模式。
 - 德佟标签打印机搜索、连接和打印骨架。
 - tools 虚拟货架测试台。
@@ -50,16 +50,17 @@ Kotlin
 Jetpack Compose
 CameraX
 ML Kit Barcode Scanning
-JSON snapshot
+当前 0.3.x: JSON snapshot
+下一版: SQLite/Room
 ```
 
 ## 下一步
 
 1. 梳理并确认手机 App 页面按钮、可点击条件和点击后流程。
 2. 按确认后的操作逻辑调整扫码页、库存页、新增页和流水页。
-3. 打印机到货/可测时，验证 40x30mm 纸面打印效果。
-4. 增加 JSON 导出/导入入口。
-5. 流程稳定后再迁 SQLite/Room。
+3. 起 SQLite/Room 数据库，表为 `items / locations / transactions / scan_logs`。
+4. 迁移现有 JSON 测试数据，并增加导出/导入入口。
+5. 打印机到货/可测时，验证 40x30mm 纸面打印效果。
 
 ## 已完成的初版实现项
 
@@ -70,7 +71,7 @@ JSON snapshot
 5. 实现新增页标签生成器：自动 ID、德佟 LPAPI 打印骨架。
 6. 实现扫码页内嵌 CameraX 预览和 ML Kit 二维码识别。
 7. 实现入库上下文：物品、重量/数量、库位，冲突时默认不替换。
-8. 实现入库、出库、盘点、移库、归档和撤销上一笔。
+8. 实现入库、出库、盘点、绑定库位、归档和撤销上一笔。
 9. 实现库位整理模式。
 10. 实现库存搜索、状态筛选、库位筛选。
 11. 实现流水页和最近扫码记录。
@@ -79,7 +80,6 @@ JSON snapshot
 ## 暂不做
 
 ```text
-SQLite/Room
 WebDAV 同步
 正式签名
 最终纸面打印效果验收

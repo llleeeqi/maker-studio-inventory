@@ -202,16 +202,16 @@ archived
 
 ## 流水
 
-关键动作写 transaction：
+主流水只记录出入库和重量/数量更新：
 
 ```text
 stock_in
 checkout
 stocktake
-move
-archive
 undo
 ```
+
+库位绑定、库位整理、归档和固定字段修改不进入主流水；它们直接更新本地 item 状态，需要排查时看 `scan_logs`。
 
 流水保留：
 

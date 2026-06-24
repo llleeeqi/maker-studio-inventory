@@ -18,8 +18,10 @@ English documentation is available as a secondary reference: [README.en.md](./RE
 
 ```text
 mobile_android/
-Kotlin + Jetpack Compose + CameraX + ML Kit + JSON snapshot
+Kotlin + Jetpack Compose + CameraX + ML Kit
 ```
+
+当前 0.3.x 测试 APK 使用 JSON snapshot；下一版直接迁到 SQLite/Room。
 
 旧 Web/Capacitor 和 Flutter 手机实现只作为历史参考，不再作为继续开发方向。
 

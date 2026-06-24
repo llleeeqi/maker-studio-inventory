@@ -118,7 +118,7 @@ docs/10-scan-workbench-redesign.md
 ```text
 items: 当前库存表
 locations: location_id -> 中文名称的轻量映射表
-transactions: 出入库/盘点/移库等库存事实流水
+transactions: 出入库和重量/数量更新主流水，不记录库位移动
 scan_logs: 扫码输入事件日志，用于排查和回看
 ```
 

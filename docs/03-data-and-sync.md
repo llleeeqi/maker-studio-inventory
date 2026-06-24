@@ -13,7 +13,9 @@ transactions
 scan_logs
 ```
 
-二维码是固定信息来源，数据库里的 `items` 是查库存和保存当前状态的依据。不保存纯标签草稿；只有入库、出库、盘点、移库、归档等写操作会改变库存事实。
+二维码是固定信息来源，数据库里的 `items` 是查库存和保存当前状态的依据。不保存纯标签草稿。
+
+主流水 `transactions` 只记录出入库和重量/数量更新。库位绑定、库位整理、归档和固定字段修改直接更新 `items`，必要时只在 `scan_logs` 留扫码或操作痕迹。
 
 ## items 表
 
@@ -119,10 +121,7 @@ name
 stock_in
 checkout
 stocktake
-move
-archive
 undo
-edit_fixed
 ```
 
 建议字段：
@@ -138,6 +137,16 @@ created_at
 ```
 
 扫码但未确认，不进入 `transactions`。
+
+库位绑定、库位整理、归档和固定字段修改不进入主流水：
+
+```text
+库位变化 -> 更新 items.location_id
+归档 -> 更新 items.status / archived_at
+固定字段修改 -> 更新 items 的固定字段副本
+```
+
+这些动作如需排查，可写 `scan_logs`，但不占用流水页。
 
 ## scan_logs 表
 
@@ -189,10 +198,10 @@ scan_logs 裁最旧扫码记录
 
 ## 撤销
 
-第一版支持撤销上一笔写操作。
+第一版支持撤销上一笔主流水写操作。
 
 ```text
-每次写操作保存 before/after
+每次主流水写操作保存 before/after
 撤销时恢复 before
 撤销本身写 transaction=undo
 ```
