@@ -1,6 +1,6 @@
 # 当前进度和恢复上下文
 
-更新时间: 2026-06-23
+更新时间: 2026-06-24
 
 ## 当前主线
 
@@ -13,8 +13,8 @@ mobile_android/
 当前可测包:
 
 ```text
-studio-inventory-native-0.3.6-debug.apk
-GitHub Release: v0.3.6
+studio-inventory-native-0.3.7-debug.apk
+GitHub Release: v0.3.7
 ```
 
 线上虚拟货架:
@@ -36,7 +36,7 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 - `v1;` 二维码协议。
 - 字段值 UTF-8 百分号编码，App 扫码后自动解码。
 - 40x30mm 标签尺寸作为当前默认。
-- 下一版直接起 SQLite/Room 数据库，表先定为 `items / locations / transactions / scan_logs`。
+- 0.3.7 已用 Android 内置 SQLite 起四张表：`items / locations / transactions / scan_logs`。
 - 新增页只生成/打印标签，不保存纯建档记录。
 - 入库必须扫到物品、重量/数量、库位，并点击入库确认。
 
@@ -49,15 +49,11 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 
 ## 下一轮要定
 
-下一轮重点不是框架选择，而是把手机 App 的操作逻辑定死:
+下一轮重点是补齐剩余弹窗确认和详情页低频操作:
 
-- 每个页面保留哪些按钮。
-- 每个按钮什么时候可点。
-- 点击后立即写数据、进入确认态，还是只改变上下文。
-- 扫码后自动触发哪些动作，哪些必须手动确认。
 - 冲突、误扫、重复扫如何处理。
 - 库存项详情页是否需要，以及详情页里有哪些动作。
-- Room 数据库落地时的字段和迁移细节。
+- 是否从当前 SQLiteOpenHelper 迁成 Room DAO。
 
 主要参考文档:
 

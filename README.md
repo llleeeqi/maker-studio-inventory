@@ -21,7 +21,7 @@ mobile_android/
 Kotlin + Jetpack Compose + CameraX + ML Kit
 ```
 
-当前 0.3.x 测试 APK 使用 JSON snapshot；下一版直接迁到 SQLite/Room。
+当前 0.3.7 测试 APK 已使用 Android SQLite 四表；旧 JSON snapshot 只作为自动迁移源。
 
 旧 Web/Capacitor 和 Flutter 手机实现只作为历史参考，不再作为继续开发方向。
 
@@ -44,7 +44,7 @@ compileSdk = 36
 - 扫物品码只展示固定信息，不自动写库存。
 - 入库必须补齐物品、重量/数量和库位，并点击确认。
 - 库位整理模式允许进入后连续扫码自动更新库位。
-- 下一版直接起 SQLite/Room 数据库，先用 `items / locations / transactions / scan_logs` 四张表。
+- 0.3.7 已起 SQLite 数据库，使用 `items / locations / transactions / scan_logs` 四张表。
 
 ## 二维码协议
 
@@ -111,12 +111,12 @@ v1;type=weight;value_g=712.4
 
 1. 梳理并确认手机 App 页面按钮、可点击条件和点击后流程。
 2. 按确认后的操作逻辑调整扫码页、库存页、新增页和流水页。
-3. 起 SQLite/Room 数据库并迁移现有 JSON 测试数据。
+3. 补扫码后 App 内确认弹窗的可编辑字段。
 4. 补导出/导入能力。
 
 中期：
 
-- SQLite/Room 数据库。
+- 是否把当前 SQLiteOpenHelper 数据层迁成 Room DAO。
 - 导出/导入和备份。
 - WebDAV 或其他同步。
 - 正式签名。

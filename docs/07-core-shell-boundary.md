@@ -37,7 +37,7 @@ v1 payload 字段
 ```text
 Kotlin 类名
 Compose 组件拆分
-Room DAO 拆分
+SQLite helper / DAO 拆分
 CameraX 封装方式
 状态管理方式
 ```

@@ -13,7 +13,7 @@ mobile_android/
 - Compose 四页：扫码 / 库存 / 新增 / 流水。
 - CameraX + ML Kit 页面内二维码扫码。
 - `v1;` parser 和 payload builder。
-- JSON 本地保存。
+- Android SQLite 四表本地保存。
 - 入库、出库、盘点、绑定库位、归档、撤销上一笔。
 - 库位整理模式。
 - 德佟标签打印机搜索、连接和打印骨架。
@@ -28,7 +28,7 @@ mobile_android/
 当前 debug APK：
 
 ```text
-studio-inventory-native-0.3.6-debug.apk
+studio-inventory-native-0.3.7-debug.apk
 ```
 
 ## 构建配置
@@ -50,16 +50,16 @@ Kotlin
 Jetpack Compose
 CameraX
 ML Kit Barcode Scanning
-当前 0.3.x: JSON snapshot
-下一版: SQLite/Room
+当前 0.3.7: Android SQLite 四表
+旧 0.3.x JSON: 仅作为自动迁移源
 ```
 
 ## 下一步
 
 1. 梳理并确认手机 App 页面按钮、可点击条件和点击后流程。
 2. 按确认后的操作逻辑调整扫码页、库存页、新增页和流水页。
-3. 起 SQLite/Room 数据库，表为 `items / locations / transactions / scan_logs`。
-4. 迁移现有 JSON 测试数据，并增加导出/导入入口。
+3. 补扫码后 App 内确认弹窗的可编辑字段。
+4. 增加导出/导入入口。
 5. 打印机到货/可测时，验证 40x30mm 纸面打印效果。
 
 ## 已完成的初版实现项
@@ -67,7 +67,7 @@ ML Kit Barcode Scanning
 1. 创建 `mobile_android/` 原生 Android 工程。
 2. 建立四个底部导航：扫码 / 库存 / 新增 / 流水。
 3. 实现 `v1` parser 和 payload builder。
-4. 实现本地 JSON store：`items / transactions / scan_log`。
+4. 实现本地 SQLite store：`items / locations / transactions / scan_logs`。
 5. 实现新增页标签生成器：自动 ID、德佟 LPAPI 打印骨架。
 6. 实现扫码页内嵌 CameraX 预览和 ML Kit 二维码识别。
 7. 实现入库上下文：物品、重量/数量、库位，冲突时默认不替换。

@@ -13,7 +13,7 @@ mobile_android/
 当前工程已创建，debug APK 已构建：
 
 ```text
-studio-inventory-native-0.3.6-debug.apk
+studio-inventory-native-0.3.7-debug.apk
 ```
 
 ## 技术边界
@@ -25,7 +25,7 @@ Kotlin
 Jetpack Compose
 CameraX PreviewView
 ML Kit Barcode Scanning
-SQLite/Room 本地数据库
+Android SQLite 本地数据库
 ```
 
 Android 配置：
@@ -323,7 +323,7 @@ usable_g = current_g - tare_g
 
 ## 数据存储
 
-下一版直接使用 SQLite/Room 数据库，不继续扩展 JSON snapshot。
+0.3.7 已直接使用 Android 内置 SQLite 数据库，不继续扩展 JSON snapshot。
 
 表：
 

@@ -11,8 +11,8 @@ android {
         applicationId = "studio.inventory.android"
         minSdk = 31
         targetSdk = 36
-        versionCode = 36
-        versionName = "0.3.6"
+        versionCode = 37
+        versionName = "0.3.7"
     }
 
     buildTypes {

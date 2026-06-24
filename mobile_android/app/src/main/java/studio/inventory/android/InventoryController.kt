@@ -28,6 +28,12 @@ enum class CandidateKind {
     Location,
 }
 
+enum class ScanMode(val label: String) {
+    StockIn("入库"),
+    Stocktake("更新库存"),
+    BindLocation("绑定库位"),
+}
+
 data class FixedConflict(
     val scanned: FixedData,
     val local: InventoryItem,
@@ -43,12 +49,16 @@ data class UndoRecord(
 class InventoryController(context: Context) {
     private val appContext = context.applicationContext
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
+    private val database = InventoryDatabase(appContext, gson)
     private val snapshotFile = File(appContext.filesDir, "inventory_snapshot.json")
 
     var snapshot by mutableStateOf(InventorySnapshot())
         private set
 
     var message by mutableStateOf("扫 v1 物品、重量或库位码。")
+        private set
+
+    var scanMode by mutableStateOf(ScanMode.StockIn)
         private set
 
     var pendingItem by mutableStateOf<FixedData?>(null)
@@ -80,23 +90,45 @@ class InventoryController(context: Context) {
 
     fun load() {
         snapshot = runCatching {
-            if (!snapshotFile.exists()) return@runCatching InventorySnapshot()
-            gson.fromJson(snapshotFile.readText(), InventorySnapshot::class.java) ?: InventorySnapshot()
+            if (database.hasData()) {
+                return@runCatching database.loadSnapshot().trimmed()
+            }
+            val migrated = if (snapshotFile.exists()) {
+                gson.fromJson(snapshotFile.readText(), InventorySnapshot::class.java) ?: InventorySnapshot()
+            } else {
+                InventorySnapshot()
+            }
+            migrated.trimmed().also {
+                database.replaceAll(it)
+                if (snapshotFile.exists()) {
+                    message = "已迁移旧 JSON 测试数据到本地数据库。"
+                }
+            }
         }.getOrElse {
-            message = "读取本地 JSON 失败，已使用空库存：${it.message}"
+            message = "读取本地数据库失败，已使用空库存：${it.message}"
             InventorySnapshot()
-        }.trimmed()
+        }
+    }
+
+    fun changeScanMode(mode: ScanMode) {
+        scanMode = mode
+        message = when (mode) {
+            ScanMode.StockIn -> "入库模式：物品码 -> 重量码/数量 -> 库位码 -> 入库确认。"
+            ScanMode.Stocktake -> "更新库存模式：物品码 -> 重量码/数量 -> 更新确认。"
+            ScanMode.BindLocation -> "绑定库位模式：物品码 -> 库位码 -> 绑定确认。"
+        }
     }
 
     fun handlePayload(payload: String) {
         val clean = payload.trim()
         if (clean.isEmpty()) return
-        addScanLog(clean)
         val parsed = parseV1Payload(clean)
         if (parsed.type == null) {
+            addScanLog(clean, parsed, "rejected", "无法识别，只支持 v1。")
             message = "无法识别，只支持 v1。"
             return
         }
+        addScanLog(clean, parsed, "accepted", parsed.type.label)
 
         when (parsed.type) {
             ItemType.Weight -> handleWeight(parsed.weightG)
@@ -140,14 +172,19 @@ class InventoryController(context: Context) {
             message = "库位标签缺字段：${missing.joinToString()}。"
             return
         }
-        val location = LocationValue(fixed.id, fixed.displayName)
+        val location = resolveLocation(fixed)
         if (pendingLocation != null && pendingLocation != location) {
             replaceCandidate = ReplaceCandidate(CandidateKind.Location, location = location)
             message = "已有待处理库位，确认后才替换。"
             return
         }
         pendingLocation = location
-        message = "已收到库位 ${location.name}。可用于入库，或开始整理该库位。"
+        upsertLocation(location)
+        message = if (fixed.name.isBlank() && snapshot.locations[location.id]?.name == location.id) {
+            "已收到库位 ${location.id}，未设置中文名称，暂用 ID 显示。"
+        } else {
+            "已收到库位 ${location.name}。可用于入库，绑定库位或整理该库位。"
+        }
         signal()
     }
 
@@ -213,7 +250,7 @@ class InventoryController(context: Context) {
                 updatedAt = nowIso(),
             ),
         )
-        commitItem("move", existing, updated)
+        saveItemOnly(updated)
         pendingItem = updated.fixed
         message = "${updated.fixed.displayName} 已整理到 ${location.name}。"
         signal()
@@ -244,6 +281,7 @@ class InventoryController(context: Context) {
             }
             CandidateKind.Location -> {
                 pendingLocation = candidate.location
+                candidate.location?.let { upsertLocation(it) }
                 message = "已替换库位为 ${candidate.location?.name}。"
             }
         }
@@ -264,10 +302,10 @@ class InventoryController(context: Context) {
         val conflict = fixedConflict ?: return
         val before = conflict.local
         val after = before.copy(fixed = conflict.scanned, type = conflict.scanned.type)
-        commitItem("edit_fixed", before, after)
+        saveItemOnly(after)
         pendingItem = after.fixed
         fixedConflict = null
-        message = "已更新本地固定信息：${after.fixed.displayName}。"
+        message = "已更新本地固定信息：${after.fixed.displayName}。不进入主流水。"
     }
 
     fun canStockIn(): Boolean {
@@ -294,6 +332,7 @@ class InventoryController(context: Context) {
             return
         }
         val before = snapshot.items[fixed.id]
+        upsertLocation(location)
         val state = ItemState(
             status = StockStatus.InStock,
             currentG = if (fixed.type == ItemType.Spool) pendingWeightG else pendingWeightG.takeIf { fixed.type == ItemType.Part },
@@ -352,9 +391,10 @@ class InventoryController(context: Context) {
         val existing = activeItem ?: return
         val location = pendingLocation ?: return
         if (existing.state.status != StockStatus.InStock) {
-            message = "只有在库物品可以移库。"
+            message = "只有在库物品可以绑定库位。"
             return
         }
+        upsertLocation(location)
         val after = existing.copy(
             state = existing.state.copy(
                 locationId = location.id,
@@ -362,9 +402,9 @@ class InventoryController(context: Context) {
                 updatedAt = nowIso(),
             ),
         )
-        commitItem("move", existing, after)
+        saveItemOnly(after)
         pendingLocation = null
-        message = "${after.fixed.displayName} 已移动到 ${after.locationText}。"
+        message = "${after.fixed.displayName} 已绑定到 ${after.locationText}。不进入主流水。"
         signal()
     }
 
@@ -379,6 +419,8 @@ class InventoryController(context: Context) {
         val after = existing.copy(
             state = existing.state.copy(
                 status = StockStatus.CheckedOut,
+                locationId = "",
+                locationName = "",
                 checkedOutOn = todayCode(),
                 updatedAt = nowIso(),
             ),
@@ -396,8 +438,8 @@ class InventoryController(context: Context) {
                 updatedAt = nowIso(),
             ),
         )
-        commitItem("archive", existing, after)
-        message = "${after.fixed.displayName} 已归档。"
+        saveItemOnly(after)
+        message = "${after.fixed.displayName} 已归档。不进入主流水。"
         signal()
     }
 
@@ -453,8 +495,8 @@ class InventoryController(context: Context) {
         )
         snapshot = snapshot.copy(
             items = trimItems(items),
-            transactions = (snapshot.transactions + transaction).takeLast(350),
-        )
+            transactions = (snapshot.transactions + transaction).takeLast(250),
+        ).trimmed()
         save()
         pendingItem = undo.before?.fixed ?: undo.after?.fixed
         lastUndo = null
@@ -478,10 +520,44 @@ class InventoryController(context: Context) {
         return pendingQty ?: quantityFromWeight(pendingWeightG, fixed.unitWeightG)
     }
 
-    private fun addScanLog(payload: String) {
+    private fun addScanLog(payload: String, parsed: ParsedPayload, result: String, logMessage: String) {
         snapshot = snapshot.copy(
-            scanLog = (listOf(ScanLogEntry(payload = payload)) + snapshot.scanLog).take(50),
+            scanLog = (
+                listOf(
+                    ScanLogEntry(
+                        payload = payload,
+                        parsedType = parsed.type?.payload.orEmpty(),
+                        parsedId = parsed.id,
+                        result = result,
+                        message = logMessage,
+                    ),
+                ) + snapshot.scanLog
+                ).take(50),
         )
+        save()
+    }
+
+    private fun resolveLocation(fixed: FixedData): LocationValue {
+        val existing = snapshot.locations[fixed.id]
+        val name = fixed.name.ifBlank { existing?.name.orEmpty() }.ifBlank { fixed.id }
+        return LocationValue(id = fixed.id, name = name)
+    }
+
+    private fun upsertLocation(location: LocationValue) {
+        if (location.id.isBlank()) return
+        val normalized = location.copy(name = location.name.ifBlank { location.id })
+        snapshot = snapshot.copy(
+            locations = snapshot.locations.toMutableMap().also {
+                it[normalized.id] = normalized
+            },
+        ).trimmed()
+        save()
+    }
+
+    private fun saveItemOnly(after: InventoryItem) {
+        val items = snapshot.items.toMutableMap()
+        items[after.id] = after
+        snapshot = snapshot.copy(items = trimItems(items)).trimmed()
         save()
     }
 
@@ -498,8 +574,8 @@ class InventoryController(context: Context) {
         )
         snapshot = snapshot.copy(
             items = trimItems(items),
-            transactions = (snapshot.transactions + transaction).takeLast(350),
-        )
+            transactions = (snapshot.transactions + transaction).takeLast(250),
+        ).trimmed()
         lastUndo = UndoRecord(action = action, itemId = after.id, before = before, after = after)
         save()
     }
@@ -524,22 +600,49 @@ class InventoryController(context: Context) {
     }
 
     private fun InventorySnapshot.trimmed(): InventorySnapshot {
+        @Suppress("USELESS_CAST")
+        val sourceItems = (items as? Map<String, InventoryItem>).orEmpty()
+        @Suppress("USELESS_CAST")
+        val sourceLocations = (locations as? Map<String, LocationValue>).orEmpty()
+        @Suppress("USELESS_CAST")
+        val sourceTransactions = (transactions as? List<InventoryTransaction>).orEmpty()
+        @Suppress("USELESS_CAST")
+        val sourceScanLog = (scanLog as? List<ScanLogEntry>).orEmpty()
+
+        val normalizedLocations = sourceLocations.toMutableMap()
+        val normalizedItems = sourceItems.mapValues { (_, item) ->
+            val locationId = item.state.locationId
+            if (locationId.isBlank()) {
+                item.copy(state = item.state.copy(locationName = ""))
+            } else {
+                val name = item.state.locationName.ifBlank {
+                    normalizedLocations[locationId]?.name.orEmpty()
+                }.ifBlank { locationId }
+                normalizedLocations[locationId] = LocationValue(id = locationId, name = name)
+                item.copy(state = item.state.copy(locationName = name))
+            }
+        }
         return copy(
-            items = trimItems(items.toMutableMap()),
-            transactions = transactions.takeLast(350),
-            scanLog = scanLog.take(50),
+            items = trimItems(normalizedItems.toMutableMap()),
+            locations = normalizedLocations,
+            transactions = sourceTransactions
+                .filter { it.action in MainTransactionActions }
+                .takeLast(250),
+            scanLog = sourceScanLog.take(50),
         )
     }
 
     private fun save() {
         runCatching {
-            snapshotFile.writeText(gson.toJson(snapshot))
+            database.replaceAll(snapshot.trimmed())
         }.onFailure {
-            message = "保存 JSON 失败：${it.message}"
+            message = "保存数据库失败：${it.message}"
         }
     }
 
     private fun newTxId(): String = "android-${System.currentTimeMillis().toString(36)}"
+
+    private val MainTransactionActions = setOf("stock_in", "checkout", "stocktake", "undo")
 
     private fun signal() {
         runCatching {

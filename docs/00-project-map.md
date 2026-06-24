@@ -42,10 +42,10 @@ Kotlin
 Jetpack Compose
 CameraX PreviewView
 ML Kit Barcode Scanning
-SQLite/Room 本地数据库
+Android SQLite 本地数据库
 ```
 
-当前 0.3.x 测试 APK 仍使用 JSON snapshot；后续主线直接迁到 SQLite/Room。
+当前 0.3.7 测试 APK 已使用 Android SQLite 四表；旧 JSON snapshot 只作为自动迁移源。
 
 Android 配置：
 
@@ -67,7 +67,7 @@ compileSdk = 36
 当前 debug APK：
 
 ```text
-studio-inventory-native-0.3.6-debug.apk
+studio-inventory-native-0.3.7-debug.apk
 ```
 
 ## tools/

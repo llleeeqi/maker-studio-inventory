@@ -87,7 +87,7 @@ data class FixedData(
                 if (displayName.isBlank()) missing += "name"
             }
             ItemType.Location -> {
-                if (displayName.isBlank()) missing += "name"
+                if (id.isBlank()) missing += "id"
             }
             ItemType.Weight -> Unit
         }
@@ -165,7 +165,12 @@ data class InventoryTransaction(
 )
 
 data class ScanLogEntry(
+    val scanId: String = newScanId(),
     val payload: String = "",
+    val parsedType: String = "",
+    val parsedId: String = "",
+    val result: String = "accepted",
+    val message: String = "",
     val createdAt: String = nowIso(),
 )
 
@@ -173,6 +178,7 @@ data class InventorySnapshot(
     val schema: Int = 1,
     val deviceId: String = "android-phone",
     val items: Map<String, InventoryItem> = emptyMap(),
+    val locations: Map<String, LocationValue> = emptyMap(),
     val transactions: List<InventoryTransaction> = emptyList(),
     val scanLog: List<ScanLogEntry> = emptyList(),
 )
@@ -385,3 +391,5 @@ fun quantityFromWeight(weightG: Double?, unitWeightG: Double?): Int? {
     if (weightG == null || unitWeightG == null || unitWeightG <= 0.0) return null
     return floor(weightG / unitWeightG).toInt().takeIf { it > 0 }
 }
+
+fun newScanId(): String = "scan-${System.currentTimeMillis().toString(36)}"

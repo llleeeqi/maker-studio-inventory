@@ -2,7 +2,7 @@
 
 ## 当前结论
 
-下一版直接起 SQLite/Room 数据库，不再继续扩展 JSON snapshot。
+0.3.7 已直接起 Android 内置 SQLite 数据库，不再继续扩展 JSON snapshot。后续如查询和迁移复杂度上来，再考虑改成 Room DAO。
 
 第一版数据库先保持轻量：
 

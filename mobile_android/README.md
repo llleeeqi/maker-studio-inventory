@@ -4,7 +4,7 @@
 
 ```text
 applicationId: studio.inventory.android
-versionName: 0.3.6
+versionName: 0.3.7
 minSdk: 31
 targetSdk: 36
 compileSdk: 36
@@ -17,7 +17,8 @@ Kotlin
 Jetpack Compose
 CameraX
 ML Kit Barcode Scanning
-Gson JSON snapshot
+Android SQLite
+Gson JSON migration/export format
 ```
 
 ## 构建
@@ -36,7 +37,7 @@ app/build/outputs/apk/debug/app-debug.apk
 仓库根目录也会保留一份便于安装测试：
 
 ```text
-studio-inventory-native-0.3.6-debug.apk
+studio-inventory-native-0.3.7-debug.apk
 ```
 
 ## 当前功能
@@ -52,7 +53,9 @@ studio-inventory-native-0.3.6-debug.apk
 - 打印机搜索可手动停止，20 秒后也会自动停止。
 - 可开启启动自动连接打标机，优先连接上次打印机。
 - 40x30mm 标签模板：左侧三行文字，右侧 Q 级纠错二维码。
-- 扫码页处理物品、重量、库位上下文。
-- 入库、出库、盘点、移库、归档、撤销上一笔。
+- 扫码页顶部三模式：入库 / 更新库存 / 绑定库位。
+- 入库、出库、盘点、绑定库位、归档、撤销上一笔。
 - 库位整理模式。
-- 本地 JSON 保存到 app 私有文件目录。
+- 本地 SQLite 四表保存：items / locations / transactions / scan_logs。
+- 旧 JSON 测试数据会在数据库为空时自动迁移。
+- 主流水只记录入库、出库、更新重量/数量和撤销；绑定库位、整理库位、归档和固定字段修改不进流水。
