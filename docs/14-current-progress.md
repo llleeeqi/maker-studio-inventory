@@ -36,7 +36,7 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 - `v1;` 二维码协议。
 - 字段值 UTF-8 百分号编码，App 扫码后自动解码。
 - 40x30mm 标签尺寸作为当前默认。
-- 下一版直接起 SQLite/Room 数据库，表先定为 `items / transactions / scan_logs`。
+- 下一版直接起 SQLite/Room 数据库，表先定为 `items / locations / transactions / scan_logs`。
 - 新增页只生成/打印标签，不保存纯建档记录。
 - 入库必须扫到物品、重量/数量、库位，并点击入库确认。
 
@@ -117,6 +117,7 @@ docs/10-scan-workbench-redesign.md
 
 ```text
 items: 当前库存表
+locations: location_id -> 中文名称的轻量映射表
 transactions: 出入库/盘点/移库等库存事实流水
 scan_logs: 扫码输入事件日志，用于排查和回看
 ```
@@ -126,5 +127,6 @@ scan_logs: 扫码输入事件日志，用于排查和回看
 ```text
 物品二维码不存当前位置
 库位二维码只标识库位本身
-物品当前库位存在 items.location_id / items.location_name
+物品当前库位存在 items.location_id
+库位中文名称存在 locations.name
 ```

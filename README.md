@@ -42,7 +42,7 @@ compileSdk = 36
 - 扫物品码只展示固定信息，不自动写库存。
 - 入库必须补齐物品、重量/数量和库位，并点击确认。
 - 库位整理模式允许进入后连续扫码自动更新库位。
-- 下一版直接起 SQLite/Room 数据库，先用 `items / transactions / scan_logs` 三张表。
+- 下一版直接起 SQLite/Room 数据库，先用 `items / locations / transactions / scan_logs` 四张表。
 
 ## 二维码协议
 

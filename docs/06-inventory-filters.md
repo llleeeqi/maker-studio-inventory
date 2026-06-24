@@ -21,10 +21,10 @@ status = in_stock
 第一版支持：
 
 ```text
-搜索: id / name / brand / material / color / category / spec / location
+搜索: id / name / brand / material / color / location_id / location name
 类型: 全部 / 耗材 / 零件 / 其他
 状态: 在库 / 已出库 / 已归档 / 全部
-库位: 按 location_id 或 location_name 查找
+库位: 按 items.location_id 或 locations.name 查找
 低库存: 耗材可用重量低、零件数量低
 ```
 
@@ -61,7 +61,7 @@ current_qty
 同类统计：
 
 ```text
-category + spec + color
+name
 ```
 
-`color` 为空时按 `category + spec` 统计。
+后续如果需要把零件拆成类别/规格/颜色，再扩展字段。

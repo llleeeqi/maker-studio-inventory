@@ -43,10 +43,12 @@ v1;key=value;key=value
 库位二维码是另一类标签，只标识库位本身：
 
 ```text
-v1;type=location;id=LOC-260617-001;name=A架第一层
+v1;type=location;id=LOC-260617-001
 ```
 
-物品当前所在库位存在数据库 `items.location_id / items.location_name`。
+`name` 可选。如果二维码带 `name`，App 可用它创建或更新 `locations` 名称映射。
+
+物品当前所在库位存在数据库 `items.location_id`，显示名称从 `locations.name` 映射得到。
 
 ## 耗材 spool
 
@@ -137,8 +139,17 @@ v1;type=location;id=LOC-260617-001;name=A架第一层;created_on=260622;note=备
 ```text
 type=location
 id
-name
 ```
+
+可选：
+
+```text
+name
+created_on
+note
+```
+
+第一版推荐库位二维码只带短 `id`，长中文名称存 `locations` 表。扫到未知库位 ID 时，App 弹窗让用户填写名称。
 
 ## 重量 weight
 
@@ -172,8 +183,7 @@ value_g
   "state": {
     "status": "in_stock",
     "current_g": 712.4,
-    "location_id": "LOC-260617-001",
-    "location_name": "A架第一层"
+    "location_id": "LOC-260617-001"
   }
 }
 ```

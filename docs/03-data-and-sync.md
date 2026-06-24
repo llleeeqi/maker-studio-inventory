@@ -8,6 +8,7 @@
 
 ```text
 items
+locations
 transactions
 scan_logs
 ```
@@ -25,7 +26,6 @@ id
 type                  spool / part / other
 status                in_stock / checked_out / archived
 location_id
-location_name
 label_created_on
 note
 stocked_at
@@ -34,17 +34,39 @@ checked_out_at
 archived_at
 ```
 
-`location_id / location_name` 是物品当前所在位置，属于库存变量，存在 `items` 表里，不进入物品二维码。
+`location_id` 是物品当前所在位置，属于库存变量，存在 `items` 表里，不进入物品二维码。
 
-库位二维码只用于识别“这个库位是谁”，例如：
+库位中文名称不直接重复塞进每条 item，统一通过 `locations` 字典表映射。
+
+## locations 表
+
+`locations` 是轻量名称映射表，不是库存事实表。
+
+用途：
+
+```text
+location_id -> 中文名称
+```
+
+建议字段：
+
+```text
+location_id
+name                  中文名称，可以很长
+note
+updated_at
+```
+
+库位二维码只用于识别“这个库位是谁”。建议二维码尽量短：
 
 ```text
 type=location
 id=LOC-A-01
-name=A架第一层
 ```
 
-扫库位码后，App 把库位 ID/名称写入对应 item 的 `location_id / location_name`。
+如果库位二维码里带了 `name`，App 可用它创建或更新 `locations` 映射；如果没带，扫到未知 `location_id` 时弹窗让用户填写名称。
+
+扫库位码并确认后，App 把库位 ID 写入对应 item 的 `location_id`。显示库存时用 `items.location_id` 查 `locations.name`，查不到时显示 ID。
 
 耗材 `spool` 固定字段：
 
@@ -150,7 +172,8 @@ created_at
 
 ```text
 items: 600
-transactions: 350
+locations: 100
+transactions: 250
 scan_logs: 50
 ```
 
@@ -159,6 +182,7 @@ scan_logs: 50
 ```text
 in_stock 不自动删
 items 超过上限时优先裁 archived，再裁 checked_out
+locations 不主动裁剪，除非用户后续明确删除库位映射
 transactions 裁最旧流水
 scan_logs 裁最旧扫码记录
 ```
