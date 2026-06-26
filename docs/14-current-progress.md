@@ -63,6 +63,7 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 docs/09-operation-button-logic.md
 docs/01-qr-input-workflows.md
 docs/10-scan-workbench-redesign.md
+docs/15-release-workflow-and-project-management.md
 ```
 
 ## 当前默认产品原则

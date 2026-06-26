@@ -105,6 +105,7 @@ v1;type=weight;value_g=712.4
 - [docs/01-qr-input-workflows.md](./docs/01-qr-input-workflows.md)：扫码输入流程。
 - [docs/04-next-steps.md](./docs/04-next-steps.md)：下一阶段开发清单。
 - [docs/14-current-progress.md](./docs/14-current-progress.md)：当前实测进度和上下文恢复入口。
+- [docs/15-release-workflow-and-project-management.md](./docs/15-release-workflow-and-project-management.md)：发版流程、版本记录和项目队列。
 
 ## 后续方向
 
