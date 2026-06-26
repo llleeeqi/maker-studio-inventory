@@ -28,7 +28,7 @@ mobile_android/
 当前 debug APK：
 
 ```text
-studio-inventory-native-0.3.7-debug.apk
+studio-inventory-native-0.3.8-debug.apk
 ```
 
 ## 构建配置
@@ -50,7 +50,7 @@ Kotlin
 Jetpack Compose
 CameraX
 ML Kit Barcode Scanning
-当前 0.3.7: Android SQLite 四表
+当前 0.3.8: Android SQLite 四表
 旧 0.3.x JSON: 仅作为自动迁移源
 ```
 

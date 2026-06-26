@@ -21,7 +21,7 @@ mobile_android/
 Kotlin + Jetpack Compose + CameraX + ML Kit
 ```
 
-当前 0.3.7 测试 APK 已使用 Android SQLite 四表；旧 JSON snapshot 只作为自动迁移源。
+当前 0.3.8 测试 APK 已使用 Android SQLite 四表；旧 JSON snapshot 只作为自动迁移源。
 
 旧 Web/Capacitor 和 Flutter 手机实现只作为历史参考，不再作为继续开发方向。
 
@@ -45,6 +45,7 @@ compileSdk = 36
 - 入库必须补齐物品、重量/数量和库位，并点击确认。
 - 库位整理模式允许进入后连续扫码自动更新库位。
 - 0.3.7 已起 SQLite 数据库，使用 `items / locations / transactions / scan_logs` 四张表。
+- 0.3.8 已重做扫码页分层 UI，并增加库存点击详情。
 
 ## 二维码协议
 

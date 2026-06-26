@@ -345,9 +345,10 @@ class InventoryController(context: Context) {
         )
         val after = InventoryItem(id = fixed.id, type = fixed.type, fixed = fixed, state = state)
         commitItem("stock_in", before, after)
-        pendingItem = after.fixed
+        pendingItem = null
         pendingWeightG = null
         pendingQty = null
+        pendingLocation = null
         message = "${after.fixed.displayName} 已入库，库位 ${after.locationText}。"
         signal()
     }
@@ -376,6 +377,7 @@ class InventoryController(context: Context) {
             ),
         )
         commitItem("stocktake", existing, after)
+        pendingItem = null
         pendingWeightG = null
         pendingQty = null
         message = "${after.fixed.displayName} 已盘点更新。"
@@ -403,6 +405,7 @@ class InventoryController(context: Context) {
             ),
         )
         saveItemOnly(after)
+        pendingItem = null
         pendingLocation = null
         message = "${after.fixed.displayName} 已绑定到 ${after.locationText}。不进入主流水。"
         signal()
@@ -459,6 +462,8 @@ class InventoryController(context: Context) {
     fun stopLocationSorting() {
         val name = sortingLocation?.name
         sortingLocation = null
+        pendingLocation = null
+        pendingItem = null
         message = if (name == null) "未在整理库位。" else "已完成整理 $name。"
     }
 

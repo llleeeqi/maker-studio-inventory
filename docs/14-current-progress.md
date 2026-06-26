@@ -1,6 +1,6 @@
 # 当前进度和恢复上下文
 
-更新时间: 2026-06-24
+更新时间: 2026-06-26
 
 ## 当前主线
 
@@ -13,8 +13,8 @@ mobile_android/
 当前可测包:
 
 ```text
-studio-inventory-native-0.3.7-debug.apk
-GitHub Release: v0.3.7
+studio-inventory-native-0.3.8-debug.apk
+GitHub Release: v0.3.8
 ```
 
 线上虚拟货架:
@@ -37,6 +37,8 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 - 字段值 UTF-8 百分号编码，App 扫码后自动解码。
 - 40x30mm 标签尺寸作为当前默认。
 - 0.3.7 已用 Android 内置 SQLite 起四张表：`items / locations / transactions / scan_logs`。
+- 0.3.8 已重做扫码页分层布局：小标题、固定高度相机、彩色步骤块、底部强提醒浮层。
+- 0.3.8 库存列表已支持点击详情，查看重量、数量、库位和时间字段。
 - 新增页只生成/打印标签，不保存纯建档记录。
 - 入库必须扫到物品、重量/数量、库位，并点击入库确认。
 

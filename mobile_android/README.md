@@ -4,7 +4,7 @@
 
 ```text
 applicationId: studio.inventory.android
-versionName: 0.3.7
+versionName: 0.3.8
 minSdk: 31
 targetSdk: 36
 compileSdk: 36
@@ -37,7 +37,7 @@ app/build/outputs/apk/debug/app-debug.apk
 仓库根目录也会保留一份便于安装测试：
 
 ```text
-studio-inventory-native-0.3.7-debug.apk
+studio-inventory-native-0.3.8-debug.apk
 ```
 
 ## 当前功能
@@ -54,6 +54,9 @@ studio-inventory-native-0.3.7-debug.apk
 - 可开启启动自动连接打标机，优先连接上次打印机。
 - 40x30mm 标签模板：左侧三行文字，右侧 Q 级纠错二维码。
 - 扫码页顶部三模式：入库 / 更新库存 / 绑定库位。
+- 扫码页使用分层布局：小标题、固定高度相机、彩色步骤块、底部强提醒浮层。
+- 只要当前扫码流程未完成，强提醒浮层会固定在底部导航上方。
+- 库存列表项可点击查看详情，能看到耗材毛重/空盘/可用重量和零件总重/单重/数量。
 - 入库、出库、盘点、绑定库位、归档、撤销上一笔。
 - 库位整理模式。
 - 本地 SQLite 四表保存：items / locations / transactions / scan_logs。

@@ -45,7 +45,7 @@ ML Kit Barcode Scanning
 Android SQLite 本地数据库
 ```
 
-当前 0.3.7 测试 APK 已使用 Android SQLite 四表；旧 JSON snapshot 只作为自动迁移源。
+当前 0.3.8 测试 APK 已使用 Android SQLite 四表；旧 JSON snapshot 只作为自动迁移源。
 
 Android 配置：
 
@@ -67,7 +67,7 @@ compileSdk = 36
 当前 debug APK：
 
 ```text
-studio-inventory-native-0.3.7-debug.apk
+studio-inventory-native-0.3.8-debug.apk
 ```
 
 ## tools/
