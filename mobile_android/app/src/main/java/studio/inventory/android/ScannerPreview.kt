@@ -43,6 +43,7 @@ import java.util.concurrent.Executors
 fun ScannerPreview(
     running: Boolean,
     torchOn: Boolean,
+    pausedMessage: String = "相机已暂停，点击开始扫描",
     onPayload: (String) -> Unit,
     onError: (String) -> Unit,
     onPermissionGranted: () -> Unit,
@@ -91,7 +92,7 @@ fun ScannerPreview(
             modifier = Modifier.fillMaxSize(),
         )
         if (!running) {
-            Text("相机已暂停，点击开始扫描", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(pausedMessage, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

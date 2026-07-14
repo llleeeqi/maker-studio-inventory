@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -64,364 +65,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-private const val ScannerIdlePauseMs = 20_000L
-
-@Composable
-fun ScanPage(controller: InventoryController, modifier: Modifier = Modifier) {
-    var scannerRunning by remember { mutableStateOf(false) }
-    var torchOn by remember { mutableStateOf(false) }
-    var lastScannerActivityAt by remember { mutableLongStateOf(0L) }
-    var showDetails by remember { mutableStateOf(false) }
-    val showScanOverlay = controller.hasActiveScanFlow()
-
-    fun startScanner() {
-        lastScannerActivityAt = System.currentTimeMillis()
-        scannerRunning = true
-    }
-
-    fun pauseScanner() {
-        scannerRunning = false
-        torchOn = false
-    }
-
-    LaunchedEffect(scannerRunning, lastScannerActivityAt) {
-        if (!scannerRunning) return@LaunchedEffect
-        val marker = lastScannerActivityAt
-        delay(ScannerIdlePauseMs)
-        if (scannerRunning && lastScannerActivityAt == marker) {
-            pauseScanner()
-            controller.reportError("20 秒未扫码，已暂停相机。")
-        }
-    }
-
-    Box(modifier = modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp),
-            contentPadding = PaddingValues(bottom = if (showScanOverlay) 178.dp else 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            item { ModeButtons(controller) }
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(176.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    ScannerPreview(
-                        running = scannerRunning,
-                        torchOn = torchOn,
-                        onPayload = { payload ->
-                            lastScannerActivityAt = System.currentTimeMillis()
-                            controller.handlePayload(payload)
-                        },
-                        onError = controller::reportError,
-                        onPermissionGranted = {
-                            startScanner()
-                            controller.reportError("相机权限已授权，正在启动扫码。")
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-            }
-            item {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Button(onClick = { startScanner() }) { Text("开始扫描") }
-                    OutlinedButton(onClick = { pauseScanner() }) { Text("暂停") }
-                    OutlinedButton(onClick = { torchOn = !torchOn }, enabled = scannerRunning) {
-                        Text(if (torchOn) "关灯" else "手电筒")
-                    }
-                    OutlinedButton(onClick = controller::clearContext) { Text("清空") }
-                }
-            }
-            item { StepIndicator(controller) }
-            if (!showScanOverlay) {
-                item { IdleStatus(controller) }
-            }
-            item {
-                OutlinedButton(onClick = { showDetails = !showDetails }, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (showDetails) "收起上下文和最近扫码" else "更多：上下文 / 最近扫码")
-                }
-            }
-            if (showDetails) {
-                item { ContextCard(controller) }
-                item {
-                    Text("最近扫码", style = MaterialTheme.typography.titleMedium)
-                }
-                items(controller.snapshot.scanLog.take(8)) { log ->
-                    ListCard(
-                        title = log.payload,
-                        subtitle = listOf(log.createdAt, log.result, log.parsedType, log.parsedId)
-                            .filter { it.isNotBlank() }
-                            .joinToString(" · "),
-                        footer = log.message,
-                    )
-                }
-            }
-        }
-        if (showScanOverlay) {
-            ScanFlowOverlay(
-                controller = controller,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-            )
-        }
-    }
-}
-
-private fun InventoryController.hasActiveScanFlow(): Boolean =
-    pendingItem != null ||
-        pendingWeightG != null ||
-        pendingQty != null ||
-        pendingLocation != null ||
-        sortingLocation != null ||
-        replaceCandidate != null ||
-        fixedConflict != null
-
-@Composable
-private fun ModeButtons(controller: InventoryController) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        ScanMode.entries.forEach { mode ->
-            FilterChip(
-                selected = controller.scanMode == mode,
-                onClick = { controller.changeScanMode(mode) },
-                label = { Text(mode.label) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun StepIndicator(controller: InventoryController) {
-    val steps = when (controller.scanMode) {
-        ScanMode.StockIn -> listOf(
-            "物品码" to (controller.pendingItem != null),
-            "重量/数量" to (controller.pendingWeightG != null || controller.pendingQty != null || controller.pendingItem?.type == ItemType.Other),
-            "库位码" to (controller.pendingLocation != null),
-            "入库确认" to controller.canStockIn(),
-        )
-        ScanMode.Stocktake -> listOf(
-            "物品码" to (controller.activeItem != null),
-            "重量/数量" to (controller.pendingWeightG != null || controller.pendingQty != null),
-            "更新确认" to controller.canStocktake(),
-        )
-        ScanMode.BindLocation -> listOf(
-            "物品码" to (controller.activeItem != null),
-            "库位码" to (controller.pendingLocation != null),
-            "绑定确认" to controller.canMove(),
-        )
-    }
-    val currentIndex = steps.indexOfFirst { !it.second }.let { if (it < 0) steps.lastIndex else it }
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        steps.forEachIndexed { index, step ->
-            val done = step.second
-            val current = index == currentIndex
-            val background = when {
-                done -> Color(0xFFD1FAE5)
-                current -> Color(0xFFDBEAFE)
-                else -> MaterialTheme.colorScheme.surfaceVariant
-            }
-            val foreground = when {
-                done -> Color(0xFF065F46)
-                current -> Color(0xFF1D4ED8)
-                else -> MaterialTheme.colorScheme.onSurfaceVariant
-            }
-            Box(
-                modifier = Modifier
-                    .background(background, RoundedCornerShape(6.dp))
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-            ) {
-                Text(step.first, color = foreground, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-    }
-}
-
-@Composable
-private fun IdleStatus(controller: InventoryController) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(controller.message, style = MaterialTheme.typography.bodyMedium)
-            if (controller.lastUndo != null) {
-                OutlinedButton(onClick = controller::undoLast) { Text("撤销上一笔") }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ScanFlowOverlay(controller: InventoryController, modifier: Modifier = Modifier) {
-    ElevatedCard(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.elevatedCardColors(containerColor = Color(0xFFFFFBEB)),
-    ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("当前扫码流程", style = MaterialTheme.typography.titleMedium)
-            Text(controller.message, style = MaterialTheme.typography.bodyMedium)
-            HorizontalDivider()
-            val conflict = controller.fixedConflict
-            val replacement = controller.replaceCandidate
-            if (conflict != null) {
-                Text("固定信息冲突", color = MaterialTheme.colorScheme.error)
-                Text("本地：${conflict.local.fixed.displayName}")
-                Text("扫码：${conflict.scanned.displayName}")
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = controller::updateLocalFixed) { Text("更新本地") }
-                    OutlinedButton(onClick = controller::keepLocalFixed) { Text("保留本地") }
-                    OutlinedButton(onClick = controller::clearContext) { Text("取消") }
-                }
-            } else if (replacement != null) {
-                Text("扫到新的内容，当前流程未完成。")
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = controller::confirmReplace) { Text("确认替换") }
-                    OutlinedButton(onClick = controller::cancelReplace) { Text("保留当前") }
-                    OutlinedButton(onClick = controller::clearContext) { Text("取消") }
-                }
-            } else {
-                InfoRow("物品", controller.pendingItem?.let { "${it.id} · ${it.displayName}" } ?: "未扫")
-                InfoRow("重量", controller.pendingWeightG?.let { "${it.gText()}g" } ?: "未扫")
-                InfoRow("数量", controller.pendingQty?.toString() ?: "未记录")
-                InfoRow("库位", controller.pendingLocation?.let { "${it.id} · ${it.name}" } ?: "未扫")
-                controller.sortingLocation?.let {
-                    InfoRow("整理", it.name)
-                }
-                controller.activeItem?.let { item ->
-                    InfoRow("本地", "${item.stockText} · ${item.locationText}")
-                }
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    when (controller.scanMode) {
-                        ScanMode.StockIn -> Button(onClick = controller::stockIn, enabled = controller.canStockIn()) { Text("确认入库") }
-                        ScanMode.Stocktake -> Button(onClick = controller::stocktake, enabled = controller.canStocktake()) { Text("确认更新") }
-                        ScanMode.BindLocation -> {
-                            Button(onClick = controller::moveActive, enabled = controller.canMove()) { Text("确认绑定") }
-                            OutlinedButton(
-                                onClick = controller::startLocationSorting,
-                                enabled = controller.pendingLocation != null && controller.sortingLocation == null,
-                            ) { Text("整理该库位") }
-                            OutlinedButton(
-                                onClick = controller::stopLocationSorting,
-                                enabled = controller.sortingLocation != null,
-                            ) { Text("完成整理") }
-                        }
-                    }
-                    OutlinedButton(onClick = controller::undoLast, enabled = controller.lastUndo != null) { Text("撤销") }
-                    OutlinedButton(onClick = controller::clearContext) { Text("取消") }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ContextCard(controller: InventoryController) {
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("当前上下文", style = MaterialTheme.typography.titleMedium)
-            Text(controller.message)
-            HorizontalDivider()
-            InfoRow("物品", controller.pendingItem?.let { "${it.id} · ${it.displayName}" } ?: "无")
-            InfoRow("重量", controller.pendingWeightG?.let { "${it.gText()}g" } ?: "无")
-            InfoRow("数量", controller.pendingQty?.toString() ?: "无")
-            InfoRow("库位", controller.pendingLocation?.let { "${it.id} · ${it.name}" } ?: "无")
-            InfoRow("整理模式", controller.sortingLocation?.name ?: "未开启")
-            controller.activeItem?.let { item ->
-                HorizontalDivider()
-                Text("本地库存：${item.stockText} / 库位 ${item.locationText}")
-            }
-        }
-    }
-}
-
-@Composable
-private fun ReplaceCandidateCard(controller: InventoryController) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
-    ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("检测到未完成上下文冲突", style = MaterialTheme.typography.titleMedium)
-            Text("默认不替换，确认后才会覆盖当前待处理内容。")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = controller::confirmReplace) { Text("确认替换") }
-                OutlinedButton(onClick = controller::cancelReplace) { Text("保留当前") }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FixedConflictCard(controller: InventoryController, conflict: FixedConflict) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-    ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("同 ID 固定信息冲突", style = MaterialTheme.typography.titleMedium)
-            Text("本地：${conflict.local.fixed.displayName}")
-            Text("扫码：${conflict.scanned.displayName}")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = controller::updateLocalFixed) { Text("更新本地") }
-                OutlinedButton(onClick = controller::keepLocalFixed) { Text("保留本地") }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ActionButtons(controller: InventoryController) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            when (controller.scanMode) {
-                ScanMode.StockIn -> {
-                    Button(onClick = controller::stockIn, enabled = controller.canStockIn()) { Text("入库") }
-                }
-                ScanMode.Stocktake -> {
-                    Button(onClick = controller::stocktake, enabled = controller.canStocktake()) { Text("更新重量/数量") }
-                }
-                ScanMode.BindLocation -> {
-                    Button(onClick = controller::moveActive, enabled = controller.canMove()) { Text("绑定库位") }
-                    OutlinedButton(
-                        onClick = controller::startLocationSorting,
-                        enabled = controller.pendingLocation != null && controller.sortingLocation == null,
-                    ) { Text("整理该库位") }
-                    OutlinedButton(
-                        onClick = controller::stopLocationSorting,
-                        enabled = controller.sortingLocation != null,
-                    ) { Text("完成整理") }
-                }
-            }
-            OutlinedButton(onClick = controller::undoLast, enabled = controller.lastUndo != null) { Text("撤销上一笔") }
-        }
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            OutlinedButton(onClick = controller::checkoutActive, enabled = controller.canCheckout()) { Text("出库") }
-            OutlinedButton(onClick = controller::archiveActive, enabled = controller.activeItem != null) { Text("归档") }
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -488,6 +131,7 @@ fun InventoryPage(controller: InventoryController, modifier: Modifier = Modifier
     }
     selectedItem?.let { item ->
         InventoryDetailSheet(
+            controller = controller,
             item = item,
             onDismiss = { selectedItem = null },
         )
@@ -496,11 +140,17 @@ fun InventoryPage(controller: InventoryController, modifier: Modifier = Modifier
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun InventoryDetailSheet(item: InventoryItem, onDismiss: () -> Unit) {
+private fun InventoryDetailSheet(controller: InventoryController, item: InventoryItem, onDismiss: () -> Unit) {
+    var pendingAction by remember(item.id) { mutableStateOf<InventoryDetailAction?>(null) }
+    val recentTransactions = controller.snapshot.transactions
+        .filter { it.itemId == item.id }
+        .takeLast(3)
+        .asReversed()
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -534,13 +184,59 @@ private fun InventoryDetailSheet(item: InventoryItem, onDismiss: () -> Unit) {
             InfoRow("入库", item.state.stockedOn)
             InfoRow("出库", item.state.checkedOutOn ?: "无")
             InfoRow("更新", item.state.updatedAt)
+            if (recentTransactions.isNotEmpty()) {
+                HorizontalDivider()
+                Text("最近流水", style = MaterialTheme.typography.titleMedium)
+                recentTransactions.forEach { tx ->
+                    InfoRow(tx.action, tx.createdAt)
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
-            OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                Text("关闭")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (item.state.status == StockStatus.InStock) {
+                    Button(onClick = { pendingAction = InventoryDetailAction.Checkout }) { Text("出库") }
+                }
+                if (item.state.status != StockStatus.Archived) {
+                    OutlinedButton(onClick = { pendingAction = InventoryDetailAction.Archive }) { Text("归档") }
+                }
+                OutlinedButton(onClick = onDismiss) { Text("关闭") }
             }
             Spacer(modifier = Modifier.height(8.dp))
         }
     }
+    pendingAction?.let { action ->
+        AlertDialog(
+            onDismissRequest = { pendingAction = null },
+            title = { Text(if (action == InventoryDetailAction.Checkout) "确认出库" else "确认归档") },
+            text = {
+                Text(
+                    if (action == InventoryDetailAction.Checkout) {
+                        "${item.fixed.displayName} 出库后会清空当前库位，保留最后重量或数量。"
+                    } else {
+                        "${item.fixed.displayName} 归档后默认不显示在在库列表。"
+                    },
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    when (action) {
+                        InventoryDetailAction.Checkout -> controller.checkoutItem(item.id)
+                        InventoryDetailAction.Archive -> controller.archiveItem(item.id)
+                    }
+                    pendingAction = null
+                    onDismiss()
+                }) { Text("确认") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { pendingAction = null }) { Text("取消") }
+            },
+        )
+    }
+}
+
+private enum class InventoryDetailAction {
+    Checkout,
+    Archive,
 }
 
 @Composable

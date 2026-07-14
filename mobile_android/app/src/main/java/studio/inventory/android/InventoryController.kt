@@ -13,32 +13,6 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import java.io.File
 
-data class ReplaceCandidate(
-    val kind: CandidateKind,
-    val fixed: FixedData? = null,
-    val weightG: Double? = null,
-    val qty: Int? = null,
-    val location: LocationValue? = null,
-)
-
-enum class CandidateKind {
-    Item,
-    Weight,
-    Quantity,
-    Location,
-}
-
-enum class ScanMode(val label: String) {
-    StockIn("入库"),
-    Stocktake("更新库存"),
-    BindLocation("绑定库位"),
-}
-
-data class FixedConflict(
-    val scanned: FixedData,
-    val local: InventoryItem,
-)
-
 data class UndoRecord(
     val action: String,
     val itemId: String,
@@ -58,32 +32,32 @@ class InventoryController(context: Context) {
     var message by mutableStateOf("扫 v1 物品、重量或库位码。")
         private set
 
-    var scanMode by mutableStateOf(ScanMode.StockIn)
-        private set
-
-    var pendingItem by mutableStateOf<FixedData?>(null)
-        private set
-
-    var pendingWeightG by mutableStateOf<Double?>(null)
-        private set
-
-    var pendingQty by mutableStateOf<Int?>(null)
-        private set
-
-    var pendingLocation by mutableStateOf<LocationValue?>(null)
-        private set
-
-    var sortingLocation by mutableStateOf<LocationValue?>(null)
-        private set
-
-    var replaceCandidate by mutableStateOf<ReplaceCandidate?>(null)
-        private set
-
-    var fixedConflict by mutableStateOf<FixedConflict?>(null)
+    var scanState by mutableStateOf(ScanWorkflowState())
         private set
 
     var lastUndo by mutableStateOf<UndoRecord?>(null)
         private set
+
+    val scanMode: ScanMode
+        get() = scanState.mode
+
+    val pendingItem: FixedData?
+        get() = scanState.item
+
+    val pendingWeightG: Double?
+        get() = scanState.weightG
+
+    val pendingQty: Int?
+        get() = scanState.quantity
+
+    val pendingLocation: LocationValue?
+        get() = scanState.location
+
+    val sortingLocation: LocationValue?
+        get() = scanState.sortingLocation
+
+    val scanReview: ScanReview?
+        get() = scanState.review
 
     val activeItem: InventoryItem?
         get() = pendingItem?.id?.let { snapshot.items[it] }
@@ -110,30 +84,36 @@ class InventoryController(context: Context) {
         }
     }
 
-    fun changeScanMode(mode: ScanMode) {
-        scanMode = mode
-        message = when (mode) {
-            ScanMode.StockIn -> "入库模式：物品码 -> 重量码/数量 -> 库位码 -> 入库确认。"
-            ScanMode.Stocktake -> "更新库存模式：物品码 -> 重量码/数量 -> 更新确认。"
-            ScanMode.BindLocation -> "绑定库位模式：物品码 -> 库位码 -> 绑定确认。"
+    fun requestScanMode(mode: ScanMode) {
+        if (mode == scanMode) return
+        if (scanState.hasSession) {
+            scanState = scanState.copy(review = ScanReview.ModeSwitch(mode))
+            message = "当前扫码流程未完成，确认后才切换模式。"
+            return
         }
+        applyScanMode(mode)
+    }
+
+    fun confirmModeSwitch() {
+        val review = scanReview as? ScanReview.ModeSwitch ?: return
+        scanState = scanState.clearedForMode(review.target)
+        message = modeMessage(review.target)
     }
 
     fun handlePayload(payload: String) {
         val clean = payload.trim()
-        if (clean.isEmpty()) return
+        if (clean.isEmpty() || scanReview != null) return
         val parsed = parseV1Payload(clean)
         if (parsed.type == null) {
             addScanLog(clean, parsed, "rejected", "无法识别，只支持 v1。")
             message = "无法识别，只支持 v1。"
             return
         }
-        addScanLog(clean, parsed, "accepted", parsed.type.label)
 
         when (parsed.type) {
-            ItemType.Weight -> handleWeight(parsed.weightG)
-            ItemType.Location -> handleLocation(parsed.fixed)
-            ItemType.Spool, ItemType.Part, ItemType.Other -> handleItem(parsed.fixed)
+            ItemType.Weight -> prepareWeightReview(clean, parsed)
+            ItemType.Location -> prepareLocationReview(clean, parsed)
+            ItemType.Spool, ItemType.Part, ItemType.Other -> prepareItemReview(clean, parsed)
         }
     }
 
@@ -141,96 +121,79 @@ class InventoryController(context: Context) {
         message = text
     }
 
-    private fun handleWeight(value: Double?) {
+    private fun applyScanMode(mode: ScanMode) {
+        scanState = scanState.clearedForMode(mode)
+        message = modeMessage(mode)
+    }
+
+    private fun modeMessage(mode: ScanMode): String = when (mode) {
+        ScanMode.StockIn -> "入库模式：物品码 -> 重量码/数量 -> 库位码 -> 入库确认。"
+        ScanMode.Stocktake -> "更新库存模式：物品码 -> 重量码/数量 -> 更新确认。"
+        ScanMode.BindLocation -> "绑定库位模式：物品码 -> 库位码 -> 绑定确认。"
+    }
+
+    private fun prepareWeightReview(raw: String, parsed: ParsedPayload) {
+        val value = parsed.weightG
         if (value == null || value <= 0.0) {
+            addScanLog(raw, parsed, "rejected", "重量码缺少有效 value_g。")
             message = "重量码缺少有效 value_g。"
             return
         }
         val rounded = round1(value)
-        if (pendingWeightG != null && pendingWeightG != rounded) {
-            replaceCandidate = ReplaceCandidate(CandidateKind.Weight, weightG = rounded)
-            message = "已有待处理重量，确认后才替换。"
-            return
-        }
-        pendingWeightG = rounded
-        pendingItem?.let { fixed ->
-            if (fixed.type == ItemType.Part) {
-                pendingQty = quantityFromWeight(rounded, fixed.unitWeightG) ?: pendingQty
-            }
-        }
-        message = "已收到重量 ${rounded.gText()}g。"
-        signal()
+        scanState = scanState.copy(
+            review = ScanReview.Weight(
+                valueG = rounded,
+                replacesCurrentWeight = pendingWeightG != null && pendingWeightG != rounded,
+            ),
+        )
+        addScanLog(raw, parsed, "waiting_confirmation", "等待确认重量 ${rounded.gText()}g")
+        message = "已识别重量 ${rounded.gText()}g，确认后才进入当前流程。"
     }
 
-    private fun handleLocation(fixed: FixedData?) {
-        if (fixed == null) {
-            message = "库位码格式错误。"
-            return
-        }
-        val missing = fixed.missingRequiredFields()
-        if (missing.isNotEmpty()) {
-            message = "库位标签缺字段：${missing.joinToString()}。"
+    private fun prepareLocationReview(raw: String, parsed: ParsedPayload) {
+        val fixed = parsed.fixed
+        if (fixed == null || fixed.id.isBlank()) {
+            addScanLog(raw, parsed, "rejected", "库位码缺少 id。")
+            message = "库位码缺少 id。"
             return
         }
         val location = resolveLocation(fixed)
-        if (pendingLocation != null && pendingLocation != location) {
-            replaceCandidate = ReplaceCandidate(CandidateKind.Location, location = location)
-            message = "已有待处理库位，确认后才替换。"
-            return
-        }
-        pendingLocation = location
-        upsertLocation(location)
-        message = if (fixed.name.isBlank() && snapshot.locations[location.id]?.name == location.id) {
-            "已收到库位 ${location.id}，未设置中文名称，暂用 ID 显示。"
-        } else {
-            "已收到库位 ${location.name}。可用于入库，绑定库位或整理该库位。"
-        }
-        signal()
+        scanState = scanState.copy(
+            review = ScanReview.Location(
+                id = location.id,
+                suggestedName = location.name,
+                replacesCurrentLocation = pendingLocation != null && pendingLocation != location,
+            ),
+        )
+        addScanLog(raw, parsed, "waiting_confirmation", "等待确认库位 ${location.id}")
+        message = "已识别库位 ${location.id}，确认名称和用途后继续。"
     }
 
-    private fun handleItem(fixed: FixedData?) {
-        if (fixed == null) {
-            message = "物品码格式错误。"
-            return
-        }
-        val missing = fixed.missingRequiredFields()
-        if (missing.isNotEmpty()) {
-            message = "标签缺必填字段：${missing.joinToString()}。请重新生成标签。"
+    private fun prepareItemReview(raw: String, parsed: ParsedPayload) {
+        val fixed = parsed.fixed
+        if (fixed == null || fixed.id.isBlank()) {
+            addScanLog(raw, parsed, "rejected", "物品码缺少 id。")
+            message = "物品码缺少 id。"
             return
         }
 
         val sorting = sortingLocation
         if (sorting != null) {
+            addScanLog(raw, parsed, "accepted", "整理到 ${sorting.name}")
             moveScannedItemDuringSorting(fixed, sorting)
             return
         }
 
         val existing = snapshot.items[fixed.id]
-        if (existing != null && !existing.fixed.equivalentTo(fixed)) {
-            fixedConflict = FixedConflict(scanned = fixed, local = existing)
-            pendingItem = existing.fixed
-            message = "同 ID 标签和本地记录不一致，请选择保留或更新本地固定信息。"
-            return
-        }
-
-        if (pendingItem != null && pendingItem?.id != fixed.id && !canStockIn()) {
-            replaceCandidate = ReplaceCandidate(CandidateKind.Item, fixed = fixed)
-            message = "已有未完成物品，确认后才替换。"
-            return
-        }
-
-        pendingItem = existing?.fixed ?: fixed
-        pendingItem?.let { item ->
-            if (item.type == ItemType.Part && pendingWeightG != null) {
-                pendingQty = quantityFromWeight(pendingWeightG, item.unitWeightG) ?: pendingQty
-            }
-        }
-        message = if (existing == null) {
-            "${fixed.displayName} 尚未入库，补齐重量/数量和库位后点入库。"
-        } else {
-            "${existing.fixed.displayName}：${existing.stockText}，库位 ${existing.locationText}。"
-        }
-        signal()
+        scanState = scanState.copy(
+            review = ScanReview.Item(
+                scanned = fixed,
+                local = existing,
+                replacesCurrentItem = pendingItem != null && pendingItem?.id != fixed.id,
+            ),
+        )
+        addScanLog(raw, parsed, "waiting_confirmation", "等待确认物品 ${fixed.id}")
+        message = "已识别 ${fixed.displayName}，确认固定信息后继续。"
     }
 
     private fun moveScannedItemDuringSorting(fixed: FixedData, location: LocationValue) {
@@ -251,67 +214,102 @@ class InventoryController(context: Context) {
             ),
         )
         saveItemOnly(updated)
-        pendingItem = updated.fixed
         message = "${updated.fixed.displayName} 已整理到 ${location.name}。"
         signal()
     }
 
-    fun confirmReplace() {
-        val candidate = replaceCandidate ?: return
-        when (candidate.kind) {
-            CandidateKind.Item -> {
-                pendingItem = candidate.fixed
-                pendingWeightG = null
-                pendingQty = null
-                pendingLocation = null
-                message = "已替换为 ${candidate.fixed?.displayName ?: "新物品"}，未完成上下文已清空。"
-            }
-            CandidateKind.Weight -> {
-                pendingWeightG = candidate.weightG
-                pendingItem?.let { fixed ->
-                    if (fixed.type == ItemType.Part) {
-                        pendingQty = quantityFromWeight(candidate.weightG, fixed.unitWeightG)
-                    }
-                }
-                message = "已替换重量为 ${candidate.weightG?.gText()}g。"
-            }
-            CandidateKind.Quantity -> {
-                pendingQty = candidate.qty
-                message = "已替换数量为 ${candidate.qty}。"
-            }
-            CandidateKind.Location -> {
-                pendingLocation = candidate.location
-                candidate.location?.let { upsertLocation(it) }
-                message = "已替换库位为 ${candidate.location?.name}。"
+    fun confirmItemReview(edited: FixedData, keepLocal: Boolean = false) {
+        val review = scanReview as? ScanReview.Item ?: return
+        if (scanMode != ScanMode.StockIn && review.local == null) {
+            message = "该物品还没有入库，不能执行${scanMode.label}。"
+            return
+        }
+        if (scanMode == ScanMode.StockIn && review.local?.state?.status == StockStatus.InStock) {
+            message = "该物品已经在库，请切换到更新库存或绑定库位。"
+            return
+        }
+        val selected = if (keepLocal && review.local != null) review.local.fixed else edited
+        val missing = selected.missingRequiredFields()
+        if (missing.isNotEmpty()) {
+            message = "还缺必填信息：${missing.joinToString()}。"
+            return
+        }
+
+        val local = review.local
+        if (!keepLocal && local != null && !local.fixed.equivalentTo(selected)) {
+            saveItemOnly(local.copy(type = selected.type, fixed = selected))
+        }
+
+        val replacing = pendingItem != null && pendingItem?.id != selected.id
+        val retainedWeight = if (replacing) null else pendingWeightG
+        val quantity = if (selected.type == ItemType.Part) {
+            quantityFromWeight(retainedWeight, selected.unitWeightG)
+        } else {
+            if (replacing) null else pendingQty
+        }
+        scanState = scanState.copy(
+            item = selected,
+            weightG = retainedWeight,
+            quantity = quantity,
+            location = if (replacing) null else pendingLocation,
+            review = null,
+        )
+        message = if (local == null) {
+            "已确认 ${selected.displayName}，继续补齐当前流程。"
+        } else {
+            "已确认 ${selected.displayName}：${snapshot.items[selected.id]?.stockText ?: local.stockText}。"
+        }
+        signal()
+    }
+
+    fun confirmWeightReview() {
+        val review = scanReview as? ScanReview.Weight ?: return
+        val fixed = pendingItem
+        if (fixed?.type == ItemType.Spool) {
+            val tare = fixed.tareG
+            if (tare == null || review.valueG <= tare) {
+                message = "毛重必须大于空盘重量。"
+                return
             }
         }
-        replaceCandidate = null
+        if (fixed?.type == ItemType.Part && (fixed.unitWeightG == null || fixed.unitWeightG <= 0.0)) {
+            message = "零件缺少单重，请先确认物品信息。"
+            return
+        }
+        scanState = scanState.copy(
+            weightG = review.valueG,
+            quantity = if (fixed?.type == ItemType.Part) quantityFromWeight(review.valueG, fixed.unitWeightG) else pendingQty,
+            review = null,
+        )
+        message = "已确认重量 ${review.valueG.gText()}g。"
+        signal()
     }
 
-    fun cancelReplace() {
-        replaceCandidate = null
-        message = "已保留当前未完成上下文。"
+    fun confirmLocationReview(name: String) {
+        val review = scanReview as? ScanReview.Location ?: return
+        val cleanName = name.trim()
+        if (cleanName.isBlank()) {
+            message = "库位名称不能为空。"
+            return
+        }
+        val location = LocationValue(review.id, cleanName)
+        upsertLocation(location)
+        scanState = scanState.copy(location = location, review = null)
+        message = "已确认库位 ${location.name}。"
+        signal()
     }
 
-    fun keepLocalFixed() {
-        fixedConflict = null
-        message = "已保留本地固定信息。"
-    }
-
-    fun updateLocalFixed() {
-        val conflict = fixedConflict ?: return
-        val before = conflict.local
-        val after = before.copy(fixed = conflict.scanned, type = conflict.scanned.type)
-        saveItemOnly(after)
-        pendingItem = after.fixed
-        fixedConflict = null
-        message = "已更新本地固定信息：${after.fixed.displayName}。不进入主流水。"
+    fun cancelScanReview() {
+        if (scanReview == null) return
+        scanState = scanState.copy(review = null)
+        message = "已取消本次扫码，当前流程保持不变。"
     }
 
     fun canStockIn(): Boolean {
         val fixed = pendingItem ?: return false
         val location = pendingLocation ?: return false
         if (location.id.isBlank()) return false
+        if (snapshot.items[fixed.id]?.state?.status == StockStatus.InStock) return false
         return when (fixed.type) {
             ItemType.Spool -> {
                 val current = pendingWeightG
@@ -345,10 +343,7 @@ class InventoryController(context: Context) {
         )
         val after = InventoryItem(id = fixed.id, type = fixed.type, fixed = fixed, state = state)
         commitItem("stock_in", before, after)
-        pendingItem = null
-        pendingWeightG = null
-        pendingQty = null
-        pendingLocation = null
+        scanState = scanState.clearedForMode()
         message = "${after.fixed.displayName} 已入库，库位 ${after.locationText}。"
         signal()
     }
@@ -377,9 +372,7 @@ class InventoryController(context: Context) {
             ),
         )
         commitItem("stocktake", existing, after)
-        pendingItem = null
-        pendingWeightG = null
-        pendingQty = null
+        scanState = scanState.clearedForMode()
         message = "${after.fixed.displayName} 已盘点更新。"
         signal()
     }
@@ -405,8 +398,7 @@ class InventoryController(context: Context) {
             ),
         )
         saveItemOnly(after)
-        pendingItem = null
-        pendingLocation = null
+        scanState = scanState.clearedForMode()
         message = "${after.fixed.displayName} 已绑定到 ${after.locationText}。不进入主流水。"
         signal()
     }
@@ -415,6 +407,11 @@ class InventoryController(context: Context) {
 
     fun checkoutActive() {
         val existing = activeItem ?: return
+        checkoutItem(existing.id)
+    }
+
+    fun checkoutItem(itemId: String) {
+        val existing = snapshot.items[itemId] ?: return
         if (existing.state.status != StockStatus.InStock) {
             message = "当前物品不是在库状态。"
             return
@@ -429,12 +426,18 @@ class InventoryController(context: Context) {
             ),
         )
         commitItem("checkout", existing, after)
+        scanState = scanState.clearedForMode()
         message = "${after.fixed.displayName} 已出库。"
         signal()
     }
 
     fun archiveActive() {
         val existing = activeItem ?: return
+        archiveItem(existing.id)
+    }
+
+    fun archiveItem(itemId: String) {
+        val existing = snapshot.items[itemId] ?: return
         val after = existing.copy(
             state = existing.state.copy(
                 status = StockStatus.Archived,
@@ -442,6 +445,7 @@ class InventoryController(context: Context) {
             ),
         )
         saveItemOnly(after)
+        scanState = scanState.clearedForMode()
         message = "${after.fixed.displayName} 已归档。不进入主流水。"
         signal()
     }
@@ -452,29 +456,22 @@ class InventoryController(context: Context) {
             message = "先扫库位码。"
             return
         }
-        sortingLocation = location
-        pendingItem = null
-        pendingWeightG = null
-        pendingQty = null
+        scanState = ScanWorkflowState(
+            mode = ScanMode.BindLocation,
+            location = location,
+            sortingLocation = location,
+        )
         message = "正在整理 ${location.name}，连续扫已入库物品。"
     }
 
     fun stopLocationSorting() {
         val name = sortingLocation?.name
-        sortingLocation = null
-        pendingLocation = null
-        pendingItem = null
+        scanState = scanState.clearedForMode(ScanMode.BindLocation)
         message = if (name == null) "未在整理库位。" else "已完成整理 $name。"
     }
 
     fun clearContext() {
-        pendingItem = null
-        pendingWeightG = null
-        pendingQty = null
-        pendingLocation = null
-        sortingLocation = null
-        replaceCandidate = null
-        fixedConflict = null
+        scanState = scanState.clearedForMode()
         message = "已清空当前上下文。"
     }
 
@@ -503,7 +500,7 @@ class InventoryController(context: Context) {
             transactions = (snapshot.transactions + transaction).takeLast(250),
         ).trimmed()
         save()
-        pendingItem = undo.before?.fixed ?: undo.after?.fixed
+        scanState = scanState.clearedForMode()
         lastUndo = null
         message = "已撤销上一笔：${undo.action}。"
     }

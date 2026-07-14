@@ -105,7 +105,7 @@ fun StudioInventoryApp(controller: InventoryController, printer: LabelPrinterCon
     ) { padding ->
         val modifier = Modifier.padding(padding)
         when (page) {
-            0 -> ScanPage(controller = controller, modifier = modifier)
+            0 -> ScanWorkspacePage(controller = controller, modifier = modifier)
             1 -> InventoryPage(controller = controller, modifier = modifier)
             2 -> AddLabelPage(
                 controller = controller,
