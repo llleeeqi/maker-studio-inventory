@@ -19,9 +19,9 @@ mobile_android/
 Kotlin + Jetpack Compose + CameraX + ML Kit
 ```
 
-当前 0.4.1 测试 APK 已使用 Android SQLite 四表；旧 JSON snapshot 只作为自动迁移源。
+当前 0.5.0 测试 APK 使用 Android SQLite，并加入本地优先的加密 WebDAV 多设备同步、冲突处理和全量备份恢复。
 
-下载：[GitHub Release v0.4.1](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.1)
+下载：[GitHub Release v0.5.0](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.0)
 
 旧 Web/Capacitor、Flutter 手机实现和早期 JS 检测版已清理。当前仓库只保留原生 Android 主线、虚拟货架测试台、文档和最新测试 APK。
 
@@ -47,7 +47,23 @@ compileSdk = 36
 - SQLite 数据库使用 `items / locations / transactions / scan_logs` 四张表。
 - 0.4.1 已重写扫码会话、扫码后确认、模式切换和底部当前流程浮层。
 - 0.4.1 库存列表支持点击详情，并提供二次确认的出库和归档。
-- 0.4.1 已在 Android 12 MuMu 模拟器完成入库、更新库存、绑定/整理库位、出库、详情和流水验收。
+- 0.5.0 增加右上角云状态、WebDAV 同步中心、设备登记、整条记录冲突处理、自动/手动备份和文件导入导出。
+- 0.5.0 已在 Android 12 MuMu 模拟器连接真实 WebDAV，完成同步、备份、导出、导入、恢复暂停和取消恢复验收。
+
+## 0.5.0 改动
+
+| 范围 | 行为 | 状态 |
+|---|---|---|
+| 本地优先 | 扫码和库存写入先提交 SQLite，网络失败不阻塞日常操作 | 已验收 |
+| WebDAV | 加密对象、加密索引、`refs/latest`、设备登记和 30 秒续期云锁 | 已验收 |
+| 状态标 | 右上角小云朵：灰色离线、绿色在线、绿色转圈同步、红色待处理 | MuMu 已验收 |
+| 多设备合并 | `base / local / remote` 三方合并，物品按完整记录判断冲突，流水按唯一 ID 合并 | 单元测试通过 |
+| 冲突处理 | 在库物品重新扫码确认；也可确认已出库/归档；库位等记录可选本机或云端 | 已构建 |
+| 调度 | 前台 3/5/10/30/60 秒或仅手动，变动使用 WorkManager 防抖同步 | 已验收 |
+| 返回逻辑 | 子页面返回扫码首页并同步；首页有待同步数据时二次返回退出 | 已验收 |
+| 全量备份 | 本机、云端、系统文件导出/导入；恢复后暂停同步，可取消或设为新基准 | MuMu 已验收 |
+| 加密边界 | WebDAV 凭据由 Android Keystore 保存；云端仓库 AES-256-GCM；备份只加密凭据块 | 单元测试和文件检查通过 |
+| 历史控制 | 索引达到 100 个或 7 天清理，保留最近 20；自动备份本机 10、云端 30 | 已构建 |
 
 ## 0.4.1 改动
 
@@ -102,7 +118,7 @@ v1;type=weight;value_g=712.4
 | `mobile_android/` | 原生 Android 主线 |
 | `tools/` | 虚拟货架测试台 |
 | `docs/` | 当前设计和后续开发记录 |
-| `studio-inventory-native-0.4.1-debug.apk` | 当前本地最新测试 APK |
+| `studio-inventory-native-0.5.0-debug.apk` | 当前本地最新测试 APK |
 
 虚拟货架测试台：
 
@@ -122,6 +138,7 @@ v1;type=weight;value_g=712.4
 - [docs/04-next-steps.md](./docs/04-next-steps.md)：下一阶段开发清单。
 - [docs/14-current-progress.md](./docs/14-current-progress.md)：当前实测进度和上下文恢复入口。
 - [docs/15-release-workflow-and-project-management.md](./docs/15-release-workflow-and-project-management.md)：发版流程、版本记录和项目队列。
+- [docs/16-webdav-sync-v1.md](./docs/16-webdav-sync-v1.md)：0.5.0 WebDAV 同步、冲突和备份协议。
 - [mobile_android/INTERACTION_REWRITE.md](./mobile_android/INTERACTION_REWRITE.md)：0.4.1 交互重写边界。
 - [mobile_android/MANUAL_TEST_MATRIX.md](./mobile_android/MANUAL_TEST_MATRIX.md)：0.4.1 验收表。
 
@@ -131,12 +148,11 @@ v1;type=weight;value_g=712.4
 
 1. 在实体 Android 手机上复核相机画面、软键盘和大字体布局。
 2. 标签机到手后验证 40x30mm 实际打印和二维码可扫性。
-3. 补导出/导入能力。
+3. 用第二台实体 Android 设备复核真实双端并发冲突。
 
 中期：
 
 - 是否把当前 SQLiteOpenHelper 数据层迁成 Room DAO。
-- 导出/导入和备份。
-- WebDAV 或其他同步。
+- WebDAV 服务器兼容性扩展和更完整的诊断导出。
 - 正式签名。
 - 真机验证打印能力。

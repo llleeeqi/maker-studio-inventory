@@ -1,6 +1,6 @@
 # 文档索引
 
-这个目录用于给后续继续开发留记忆点。当前主线是原生 Android 第一版，不再沿用 Web/Capacitor 或 Flutter 手机路线作为开发方向。
+这个目录用于给后续继续开发留记忆点。当前主线是原生 Android 第一版；旧 Web/Capacitor、Flutter 和早期 JS 检测版已清理。
 
 | 文档 | 用途 |
 |---|---|
@@ -17,3 +17,4 @@
 | [13-native-android-v1-plan.md](./13-native-android-v1-plan.md) | 原生 Android v1 总计划：技术栈、数据、扫码和业务规则 |
 | [14-current-progress.md](./14-current-progress.md) | 当前实测进度、暂缓事项和上下文恢复入口 |
 | [15-release-workflow-and-project-management.md](./15-release-workflow-and-project-management.md) | 发版流程、版本记录和项目队列 |
+| [16-webdav-sync-v1.md](./16-webdav-sync-v1.md) | 0.5.0 本地优先 WebDAV 同步、冲突、加密和备份恢复协议 |

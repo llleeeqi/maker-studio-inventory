@@ -122,6 +122,9 @@ stock_in
 checkout
 stocktake
 undo
+sync_resolution_in_stock
+sync_resolution_checkout
+sync_resolution_archive
 ```
 
 建议字段：
@@ -222,7 +225,7 @@ scan_log 导入 scan_logs 或丢弃
 
 ## 同步
 
-WebDAV 或其他同步放到数据库/导出能力稳定后再做。
+0.5.0 已实现本地优先 WebDAV 同步。
 
 同步不进入日常扫码主链路：
 
@@ -230,3 +233,20 @@ WebDAV 或其他同步放到数据库/导出能力稳定后再做。
 扫码 -> 写本地 -> 完成
 后台或手动同步 -> 合并/上传
 ```
+
+日常同步范围：
+
+```text
+items
+locations
+transactions
+同步设备和冲突元数据
+```
+
+`scan_logs` 不参与日常同步，只保留在本机并进入全量备份。
+
+同步仓库使用内容寻址的加密对象和加密索引，云端只明文保留 `refs/latest`、设备登记和锁。物品按完整记录做 `base / local / remote` 三方合并；同一物品两端都改动时不按字段拼接，而是进入冲突确认。
+
+全量备份包含四张业务表。库存主体是可读 JSON，WebDAV 密码和仓库密钥放在独立加密凭据块中。备份可保存在 App 本机目录、WebDAV 云端，也可通过 Android 文件选择器导出和导入。
+
+完整协议和恢复边界见 [16-webdav-sync-v1.md](./16-webdav-sync-v1.md)。

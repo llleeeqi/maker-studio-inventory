@@ -3,9 +3,9 @@
 ## 当前版本
 
 ```text
-当前可测版: v0.4.1
-APK: studio-inventory-native-0.4.1-debug.apk
-Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.1
+当前可测版: v0.5.0
+APK: studio-inventory-native-0.5.0-debug.apk
+Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.0
 ```
 
 ## 工作流
@@ -38,6 +38,40 @@ GitHub Release 可打开
 ```
 
 ## 版本记录
+
+### v0.5.0
+
+本地优先 WebDAV 同步和全量备份版本。
+
+已完成：
+
+```text
+SQLite schema 2 无损升级，流水增加来源设备字段
+右上角小云朵全局同步状态，点击进入同步与备份页面
+WebDAV 加密对象/索引仓库、设备登记、latest 指针和云锁
+前台定时检查、变动防抖、WorkManager 后台同步和返回同步
+base/local/remote 三方合并，完整物品冲突和追加式流水合并
+冲突物品重新扫码确认在库，或确认出库/归档并写校正流水
+首次绑定安全合并、采用云端、本机重建云端三种策略
+本机/云端自动和手动全量备份，文件导出和导入
+恢复暂停同步、取消恢复、恢复结果设为新云端基准
+Android Keystore 本机凭据保护，AES-256-GCM 云端仓库和备份凭据块
+索引和自动备份保留策略，防止历史无限堆积
+```
+
+验证状态：
+
+```text
+./gradlew testDebugUnitTest assembleDebug assembleRelease 通过
+Debug APK SHA256: 90a9609683dc0949d9b5c025ca1ded069252e2ca47caab4a834f8dc9f3d3e44a
+Android 12 MuMu 升级后保留 3 个物品、2 个库位和原有流水
+真实 WebDAV 初始化、加密对象上传、库存变动同步通过
+5 秒前台同步空闲 16 秒后索引数量保持不变
+本机备份、云端备份、备份凭据密文检查通过
+系统文件选择器导出、导入、恢复暂停和取消恢复通过
+自动备份并发竞态已用数据库原子占位修正，重复元数据已清理
+真实双实体设备并发冲突仍待后续复核
+```
 
 ### v0.4.1
 
@@ -166,8 +200,8 @@ tools 虚拟货架耗材/重量/库位扫码链路可用
 ### P1: 完整日常闭环
 
 ```text
-增加导出/导入入口
 根据纸面效果决定是否调整标签到 50x40 或 60x40
+第二台实体 Android 设备复核并发冲突和首次绑定三种策略
 ```
 
 ### P2: 稳定和长期维护
@@ -175,8 +209,7 @@ tools 虚拟货架耗材/重量/库位扫码链路可用
 ```text
 是否从 SQLiteOpenHelper 迁成 Room DAO
 正式签名
-备份和恢复
-WebDAV 或其他同步
+同步诊断导出和更多 WebDAV 服务兼容性测试
 ```
 
 ## 当前不做
@@ -186,7 +219,7 @@ WebDAV 或其他同步
 不回到 Flutter/Capacitor
 不做手动 payload 输入
 不做服务端
-不做多设备协作
+不做账号、成员、审批和服务端协作系统
 ```
 
 ## 文档入口
@@ -199,4 +232,5 @@ docs/15-release-workflow-and-project-management.md
 docs/09-operation-button-logic.md
 docs/01-qr-input-workflows.md
 docs/03-data-and-sync.md
+docs/16-webdav-sync-v1.md
 ```

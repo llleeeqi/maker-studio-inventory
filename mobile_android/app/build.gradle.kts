@@ -11,8 +11,8 @@ android {
         applicationId = "studio.inventory.android"
         minSdk = 31
         targetSdk = 36
-        versionCode = 41
-        versionName = "0.4.1"
+        versionCode = 50
+        versionName = "0.5.0"
     }
 
     buildTypes {
@@ -57,6 +57,8 @@ dependencies {
     implementation("androidx.camera:camera-view:1.5.3")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
     implementation("com.google.code.gson:gson:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:5.4.0")
+    implementation("androidx.work:work-runtime:2.11.2")
 
     testImplementation("junit:junit:4.13.2")
 

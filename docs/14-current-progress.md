@@ -13,8 +13,8 @@ mobile_android/
 当前可测包:
 
 ```text
-studio-inventory-native-0.4.1-debug.apk
-GitHub Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.1
+studio-inventory-native-0.5.0-debug.apk
+GitHub Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.0
 ```
 
 线上虚拟货架:
@@ -55,19 +55,32 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 - 流水页显示当前版本和 GitHub 仓库地址，点击可跳转浏览器下载更新。
 - 新增页只生成/打印标签，不保存纯建档记录。
 - 入库必须扫到物品、重量/数量、库位，并点击入库确认。
+- 0.5.0 SQLite 数据库升级到 schema 2，原有物品和流水无损保留。
+- 0.5.0 已实现本地优先 WebDAV 同步：`items / locations / transactions` 同步，`scan_logs` 仅本地和全量备份。
+- 右上角小云朵显示离线、在线、同步中和待处理状态，点击进入同步与备份页面。
+- 云端对象和索引使用共享仓库密钥 AES-256-GCM 加密；本机 WebDAV 密码和仓库密钥由 Android Keystore 保存。
+- 主流水增加来源设备 ID 和名称；同步使用完整物品记录三方合并，不做字段拼接。
+- 物品冲突会阻塞普通操作，可重新扫码确认在库，或确认已出库/归档；处理时写校正流水。
+- WebDAV 云锁按 30 秒续期、65 秒过期；同设备前台和 WorkManager 也不会并发重复同步。
+- 前台同步间隔支持 3/5/10/30/60 秒和仅手动，默认 5 秒。
+- 全量备份支持本机、WebDAV 云端和 Android 文件选择器导出/导入。
+- 恢复后同步暂停，用户可取消恢复或将结果设为新云端基准。
+- 自动备份每天有变化时最多一份，本机保留 10、云端保留 30；手动备份不自动删除。
+- MuMu 已连接 `http://192.168.3.130:19080` 本地 WebDAV 完成真实上传、变动同步和幂等检查；空闲 16 秒索引数量不增长。
+- MuMu 已完成本机/云端备份、凭据密文检查、文件导出、文件导入、恢复暂停和取消恢复。
 
 ## 暂缓事项
 
 - 标签打印的实际纸面效果还没有完成最终验收。
 - App 生成标签预览里，SDK 无法返回 bitmap 时仍使用占位二维码；先不处理，等打印机实测纸面效果后再决定是否内置真二维码预览。
 - 现有 JSON 只作为测试版存量数据/迁移来源，不再作为后续主要数据层扩展。
-- 导出/导入 JSON 还没做。
+- 还没有用两台实体 Android 设备做真实并发冲突验收；当前冲突规则由单元测试、单机流程和数据库检查覆盖。
 
 ## 下一轮重点
 
 - 在实体 Android 手机上复核真实相机画面、扫码速度、大字体和软键盘布局。
 - 打印机到手后验证 40x30mm 纸面排版和二维码可扫性。
-- 打印实测后再排导出/导入与 Room 迁移优先级。
+- 打印实测后再排 Room 迁移和同步诊断导出优先级。
 
 主要参考文档:
 
@@ -76,6 +89,7 @@ docs/09-operation-button-logic.md
 docs/01-qr-input-workflows.md
 docs/10-scan-workbench-redesign.md
 docs/15-release-workflow-and-project-management.md
+docs/16-webdav-sync-v1.md
 ```
 
 ## 当前默认产品原则

@@ -22,15 +22,10 @@
 工作室物品管理/
 ├── mobile_android/      # 新原生 Android 主线
 ├── tools/               # 虚拟货架测试台
-├── core/                # 早期 Web 检测版的 JS 业务核心，作为参考和测试资料
-├── app/                 # 早期 Web 检测版 UI，作为参考和工具备份
-├── android/             # 早期 Android Web 壳工程，历史目录
-├── mobile_flutter/      # Flutter 0.2.x 历史实现，保留作参考
-├── tests/               # 早期 JS 核心测试
 ├── docs/                # 当前设计和后续开发记录
 ├── README.md            # 当前状态和快速说明
 ├── 架构决策.md          # 当前技术路线取舍
-└── 项目大纲.md          # 原始大纲
+└── studio-inventory-native-0.5.0-debug.apk
 ```
 
 ## mobile_android/
@@ -43,9 +38,11 @@ Jetpack Compose
 CameraX PreviewView
 ML Kit Barcode Scanning
 Android SQLite 本地数据库
+OkHttp WebDAV
+WorkManager
 ```
 
-当前 0.3.8 测试 APK 已使用 Android SQLite 四表；旧 JSON snapshot 只作为自动迁移源。
+当前 0.5.0 测试 APK 已使用 Android SQLite schema 2，并实现本地优先加密 WebDAV 同步和全量备份恢复；旧 JSON snapshot 只作为自动迁移源。
 
 Android 配置：
 
@@ -67,7 +64,7 @@ compileSdk = 36
 当前 debug APK：
 
 ```text
-studio-inventory-native-0.3.8-debug.apk
+studio-inventory-native-0.5.0-debug.apk
 ```
 
 ## tools/
@@ -83,33 +80,22 @@ studio-inventory-native-0.3.8-debug.apk
 
 电脑 Web 测试工具只模拟真实现场：货架、标签、重量二维码。它不提供复制 payload 或手动输入入口。
 
-## core/ 和 app/
+## 已清理的历史实现
 
-`core/` 与 `app/` 是早期 Web 检测版。它们验证过库存状态机、快照、筛选、二维码输入等概念，但不再作为 Android app 的主实现约束。
+以下旧路线已经从仓库中删除，不再作为参考目录保留：
 
-保留原因：
+```text
+core/
+app/
+tests/
+android/
+mobile_flutter/
+Web/Capacitor 顶层配置
+Flutter 旧 APK
+旧 native APK
+```
 
-- 旧逻辑可以作为 Kotlin 业务规则的参考。
-- `tests/` 里仍有部分流程用例可迁移。
-- `tools/` 仍方便模拟已贴标签的测试现场。
-
-新 Android app 可以直接用 Kotlin 实现业务规则；硬约束是 `v1` 字段语义和文档一致。
-
-## mobile_flutter/
-
-`mobile_flutter/` 是 Flutter 0.2.x 历史实现，当前不再继续作为主线。
-
-保留原因：
-
-- 可查看早期 Material 3 页面组织。
-- 可参考扫码诊断、库存页面和 JSON 结构尝试。
-- 已生成的 APK 仍可作为历史测试包。
-
-不要再基于该目录继续补手机主功能。
-
-## android/
-
-`android/` 是早期 Android Web 壳工程，当前作为历史目录保留，不再继续推进。
+后续功能直接落在 `mobile_android/`。电脑端测试只保留 `tools/` 虚拟货架。
 
 ## docs/
 
@@ -120,3 +106,4 @@ studio-inventory-native-0.3.8-debug.apk
 3. [12-v1-protocol-and-scope.md](./12-v1-protocol-and-scope.md)
 4. [01-qr-input-workflows.md](./01-qr-input-workflows.md)
 5. [09-operation-button-logic.md](./09-operation-button-logic.md)
+6. [16-webdav-sync-v1.md](./16-webdav-sync-v1.md)

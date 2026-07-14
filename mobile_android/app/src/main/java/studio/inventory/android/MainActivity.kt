@@ -1,6 +1,7 @@
 package studio.inventory.android
 
 import android.os.Bundle
+import androidx.activity.compose.BackHandler
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Row
@@ -26,21 +27,30 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             val controller = remember { InventoryController(applicationContext) }
+            val sync = remember { SyncController(applicationContext, controller) }
             val printer = remember { LabelPrinterController(applicationContext) }
+            var loaded by remember { mutableStateOf(false) }
             LaunchedEffect(Unit) {
                 controller.load()
+                sync.reload()
+                loaded = true
                 if (printer.autoConnectEnabled) {
                     if (hasPrinterPermissions(applicationContext)) {
                         printer.autoConnect()
@@ -50,10 +60,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
             DisposableEffect(Unit) {
-                onDispose { printer.close() }
+                onDispose {
+                    if (sync.pendingChanges) SyncController.enqueueBackgroundSync(applicationContext)
+                    printer.close()
+                }
             }
             StudioInventoryTheme {
-                StudioInventoryApp(controller, printer)
+                StudioInventoryApp(controller, printer, sync, loaded)
             }
         }
     }
@@ -100,9 +113,19 @@ private fun StudioInventoryTheme(content: @Composable () -> Unit) {
 }
 
 @Composable
-fun StudioInventoryApp(controller: InventoryController, printer: LabelPrinterController) {
+fun StudioInventoryApp(
+    controller: InventoryController,
+    printer: LabelPrinterController,
+    sync: SyncController,
+    loaded: Boolean = true,
+) {
     var page by remember { mutableIntStateOf(0) }
+    var showSyncCenter by remember { mutableStateOf(false) }
+    var lastExitRequestAt by remember { mutableLongStateOf(0L) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val activity = context as? ComponentActivity
     val destinations = listOf(
         "扫码" to Icons.Default.Search,
         "库存" to Icons.Default.Home,
@@ -111,6 +134,38 @@ fun StudioInventoryApp(controller: InventoryController, printer: LabelPrinterCon
     )
 
     DebugScanBridge(controller)
+    DebugSyncBridge(sync)
+
+    LaunchedEffect(loaded, sync.configuration.isConfigured, sync.configuration.intervalSeconds) {
+        if (loaded && sync.configuration.isConfigured) sync.runForegroundLoop()
+    }
+
+    BackHandler {
+        when {
+            showSyncCenter -> {
+                showSyncCenter = false
+                page = 0
+                scope.launch { sync.syncNow(force = true) }
+            }
+            page != 0 -> {
+                page = 0
+                scope.launch { sync.syncNow(force = true) }
+            }
+            !sync.pendingChanges -> activity?.finish()
+            System.currentTimeMillis() - lastExitRequestAt <= 2_000L -> {
+                SyncController.enqueueBackgroundSync(context)
+                activity?.finish()
+            }
+            else -> {
+                lastExitRequestAt = System.currentTimeMillis()
+                SyncController.enqueueBackgroundSync(context)
+                scope.launch {
+                    snackbarHostState.showSnackbar("再次返回将退出，同步会在后台继续")
+                }
+                scope.launch { sync.syncNow(force = true) }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -121,7 +176,12 @@ fun StudioInventoryApp(controller: InventoryController, printer: LabelPrinterCon
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("工作室物品管理", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "工作室物品管理",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
+                )
+                SyncStatusIndicator(sync = sync, onClick = { showSyncCenter = true })
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -132,8 +192,11 @@ fun StudioInventoryApp(controller: InventoryController, printer: LabelPrinterCon
             ) {
                 destinations.forEachIndexed { index, (title, icon) ->
                     NavigationBarItem(
-                        selected = page == index,
-                        onClick = { page = index },
+                        selected = !showSyncCenter && page == index,
+                        onClick = {
+                            showSyncCenter = false
+                            page = index
+                        },
                         icon = { Icon(icon, contentDescription = title) },
                         label = { Text(title) },
                     )
@@ -142,16 +205,27 @@ fun StudioInventoryApp(controller: InventoryController, printer: LabelPrinterCon
         },
     ) { padding ->
         val modifier = Modifier.padding(padding)
-        when (page) {
-            0 -> ScanWorkspacePage(controller = controller, modifier = modifier)
-            1 -> InventoryPage(controller = controller, modifier = modifier)
-            2 -> AddLabelPage(
-                controller = controller,
-                printer = printer,
-                snackbarHostState = snackbarHostState,
+        if (showSyncCenter) {
+            SyncCenterPage(
+                sync = sync,
                 modifier = modifier,
+                onOpenItem = {
+                    showSyncCenter = false
+                    page = 0
+                },
             )
-            3 -> TransactionsPage(controller = controller, modifier = modifier)
+        } else {
+            when (page) {
+                0 -> ScanWorkspacePage(controller = controller, modifier = modifier)
+                1 -> InventoryPage(controller = controller, modifier = modifier)
+                2 -> AddLabelPage(
+                    controller = controller,
+                    printer = printer,
+                    snackbarHostState = snackbarHostState,
+                    modifier = modifier,
+                )
+                3 -> TransactionsPage(controller = controller, modifier = modifier)
+            }
         }
     }
 }

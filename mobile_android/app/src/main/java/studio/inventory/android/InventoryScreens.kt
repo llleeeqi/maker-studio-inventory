@@ -469,9 +469,10 @@ fun TransactionsPage(controller: InventoryController, modifier: Modifier = Modif
             }
         }
         items(transactions) { tx ->
+            val source = tx.sourceDeviceName.ifBlank { tx.sourceDeviceId }.ifBlank { "本机旧记录" }
             ListCard(
                 title = "${transactionActionLabel(tx.action)} · ${tx.itemId}",
-                subtitle = "${tx.itemType.label} · ${displayTimestamp(tx.createdAt)}",
+                subtitle = "${tx.itemType.label} · ${displayTimestamp(tx.createdAt)} · $source",
                 footer = "tx=${tx.txId}",
             )
         }

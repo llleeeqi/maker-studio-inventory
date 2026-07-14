@@ -161,6 +161,8 @@ data class InventoryTransaction(
     val action: String = "",
     val itemId: String = "",
     val itemType: ItemType = ItemType.Other,
+    val sourceDeviceId: String = "",
+    val sourceDeviceName: String = "",
     val createdAt: String = nowIso(),
     val before: InventoryItem? = null,
     val after: InventoryItem? = null,
@@ -403,6 +405,9 @@ fun transactionActionLabel(action: String): String = when (action) {
     "checkout" -> "出库"
     "stocktake" -> "更新库存"
     "undo" -> "撤销"
+    "sync_resolution_in_stock" -> "同步校正·在库"
+    "sync_resolution_checkout" -> "同步校正·出库"
+    "sync_resolution_archive" -> "同步校正·归档"
     else -> action
 }
 

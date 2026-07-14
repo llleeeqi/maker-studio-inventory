@@ -25,6 +25,15 @@ class InventoryController(context: Context) {
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
     private val database = InventoryDatabase(appContext, gson)
     private val snapshotFile = File(appContext.filesDir, "inventory_snapshot.json")
+    private var localDeviceId: String = ""
+    private var localDeviceName: String = ""
+
+    var onInventoryChanged: (() -> Unit)? = null
+    var isItemSyncBlocked: (String) -> Boolean = { false }
+    var onSyncConflictResolved: ((String) -> Unit)? = null
+
+    var conflictResolutionItemId by mutableStateOf<String?>(null)
+        private set
 
     var snapshot by mutableStateOf(InventorySnapshot())
         private set
@@ -82,6 +91,82 @@ class InventoryController(context: Context) {
             message = "读取本地数据库失败，已使用空库存：${it.message}"
             InventorySnapshot()
         }
+    }
+
+    fun configureLocalDevice(deviceId: String, deviceName: String) {
+        localDeviceId = deviceId
+        localDeviceName = deviceName
+    }
+
+    fun beginSyncConflictResolution(itemId: String) {
+        conflictResolutionItemId = itemId
+        scanState = ScanWorkflowState(mode = ScanMode.StockIn)
+        message = "同步异常确认：重新扫描该物品、重量或数量，再扫描库位。"
+    }
+
+    fun cancelSyncConflictResolution() {
+        conflictResolutionItemId = null
+        scanState = scanState.clearedForMode(ScanMode.StockIn)
+        message = "已取消同步异常确认。"
+    }
+
+    fun replaceFromSync(incoming: InventorySnapshot) {
+        snapshot = incoming.copy(scanLog = snapshot.scanLog).trimmed()
+        runCatching { database.replaceAll(snapshot) }
+            .onFailure { message = "写入同步结果失败：${it.message}" }
+    }
+
+    fun replaceFromBackup(incoming: InventorySnapshot) {
+        snapshot = incoming.trimmed()
+        runCatching { database.replaceAll(snapshot) }
+            .onFailure { message = "恢复备份失败：${it.message}" }
+    }
+
+    fun applySyncConflictCandidate(conflict: SyncConflictCandidate, useRemote: Boolean): Boolean {
+        val selectedJson = if (useRemote) conflict.remoteJson else conflict.localJson
+        return runCatching {
+            when (conflict.entityType) {
+                SyncEntityType.Location -> {
+                    val locations = snapshot.locations.toMutableMap()
+                    val items = snapshot.items.toMutableMap()
+                    if (selectedJson == null) {
+                        require(items.values.none { it.state.locationId == conflict.entityId }) {
+                            "仍有物品使用该库位，不能采用删除结果。"
+                        }
+                        locations.remove(conflict.entityId)
+                    } else {
+                        val location = gson.fromJson(selectedJson, LocationValue::class.java)
+                        locations[location.id] = location
+                        items.replaceAll { _, item ->
+                            if (item.state.locationId == location.id) {
+                                item.copy(state = item.state.copy(locationName = location.name, updatedAt = nowIso()))
+                            } else {
+                                item
+                            }
+                        }
+                    }
+                    snapshot = snapshot.copy(items = items, locations = locations).trimmed()
+                }
+                SyncEntityType.Transaction -> {
+                    require(selectedJson != null) { "主流水不能通过冲突处理删除。" }
+                    val selected = gson.fromJson(selectedJson, InventoryTransaction::class.java)
+                    val transactions = snapshot.transactions.associateBy { it.txId }.toMutableMap()
+                    transactions[selected.txId] = selected
+                    snapshot = snapshot.copy(
+                        transactions = transactions.values.sortedWith(
+                            compareBy<InventoryTransaction> { it.createdAt }.thenBy { it.txId },
+                        ),
+                    ).trimmed()
+                }
+                SyncEntityType.Item -> error("物品冲突必须通过扫码重新确认。")
+                SyncEntityType.Conflict -> error("不支持嵌套冲突。")
+            }
+            database.replaceAll(snapshot)
+            onInventoryChanged?.invoke()
+            message = "同步异常已按${if (useRemote) "云端" else "本机"}版本处理。"
+        }.onFailure {
+            message = it.message ?: "处理同步异常失败。"
+        }.isSuccess
     }
 
     fun requestScanMode(mode: ScanMode) {
@@ -186,6 +271,11 @@ class InventoryController(context: Context) {
             message = "物品码缺少 id。"
             return
         }
+        if (isItemSyncBlocked(fixed.id) && conflictResolutionItemId != fixed.id) {
+            addScanLog(raw, parsed, "rejected", "物品存在同步异常，需要重新确认")
+            message = "${fixed.displayName} 存在同步异常，请从同步中心重新确认。"
+            return
+        }
 
         val sorting = sortingLocation
         if (sorting != null) {
@@ -253,11 +343,12 @@ class InventoryController(context: Context) {
             message = "该物品已归档，不能继续扫码操作。"
             return
         }
-        if (!ScanWorkflowRules.allowsItem(scanMode, localStatus) && scanMode != ScanMode.StockIn) {
+        val resolvingConflict = conflictResolutionItemId == review.scanned.id
+        if (!resolvingConflict && !ScanWorkflowRules.allowsItem(scanMode, localStatus) && scanMode != ScanMode.StockIn) {
             message = "只有在库物品可以执行${scanMode.label}。"
             return
         }
-        if (!ScanWorkflowRules.allowsItem(scanMode, localStatus)) {
+        if (!resolvingConflict && !ScanWorkflowRules.allowsItem(scanMode, localStatus)) {
             message = "该物品已经在库，请切换到更新库存或绑定库位。"
             return
         }
@@ -327,7 +418,8 @@ class InventoryController(context: Context) {
 
     fun canStockIn(): Boolean {
         val existingStatus = pendingItem?.id?.let { snapshot.items[it]?.state?.status }
-        return ScanWorkflowRules.canStockIn(scanState, existingStatus)
+        val statusForRules = if (pendingItem?.id == conflictResolutionItemId) null else existingStatus
+        return ScanWorkflowRules.canStockIn(scanState, statusForRules)
     }
 
     fun stockIn() {
@@ -350,9 +442,18 @@ class InventoryController(context: Context) {
             updatedAt = nowIso(),
         )
         val after = InventoryItem(id = fixed.id, type = fixed.type, fixed = fixed, state = state)
-        commitItem("stock_in", before, after)
+        val resolvingConflict = conflictResolutionItemId == fixed.id
+        commitItem(if (resolvingConflict) "sync_resolution_in_stock" else "stock_in", before, after)
         scanState = scanState.clearedForMode()
-        message = "${after.fixed.displayName} 已入库，库位 ${after.locationText}。"
+        if (resolvingConflict) {
+            conflictResolutionItemId = null
+            onSyncConflictResolved?.invoke(after.id)
+        }
+        message = if (resolvingConflict) {
+            "${after.fixed.displayName} 的同步异常已按在库状态重新确认。"
+        } else {
+            "${after.fixed.displayName} 已入库，库位 ${after.locationText}。"
+        }
         signal()
     }
 
@@ -412,6 +513,10 @@ class InventoryController(context: Context) {
     }
 
     fun checkoutItem(itemId: String) {
+        if (isItemSyncBlocked(itemId)) {
+            message = "该物品存在同步异常，不能出库。"
+            return
+        }
         val existing = snapshot.items[itemId] ?: return
         if (existing.state.status != StockStatus.InStock) {
             message = "当前物品不是在库状态。"
@@ -438,6 +543,10 @@ class InventoryController(context: Context) {
     }
 
     fun archiveItem(itemId: String) {
+        if (isItemSyncBlocked(itemId)) {
+            message = "该物品存在同步异常，不能归档。"
+            return
+        }
         val existing = snapshot.items[itemId] ?: return
         val after = existing.copy(
             state = existing.state.copy(
@@ -448,6 +557,45 @@ class InventoryController(context: Context) {
         saveItemOnly(after)
         scanState = scanState.clearedForMode()
         message = "${after.fixed.displayName} 已归档。不进入主流水。"
+        signal()
+    }
+
+    fun resolveConflictAsCheckedOut(itemId: String) {
+        val existing = snapshot.items[itemId] ?: run {
+            message = "本机没有该物品记录，不能直接确认出库，请重新扫码确认。"
+            return
+        }
+        val after = existing.copy(
+            state = existing.state.copy(
+                status = StockStatus.CheckedOut,
+                locationId = "",
+                locationName = "",
+                checkedOutOn = todayCode(),
+                updatedAt = nowIso(),
+            ),
+        )
+        commitItem("sync_resolution_checkout", existing, after)
+        conflictResolutionItemId = null
+        onSyncConflictResolved?.invoke(itemId)
+        message = "${after.fixed.displayName} 的同步异常已按出库状态确认。"
+        signal()
+    }
+
+    fun resolveConflictAsArchived(itemId: String) {
+        val existing = snapshot.items[itemId] ?: run {
+            message = "本机没有该物品记录，不能直接归档，请重新扫码确认。"
+            return
+        }
+        val after = existing.copy(
+            state = existing.state.copy(
+                status = StockStatus.Archived,
+                updatedAt = nowIso(),
+            ),
+        )
+        commitItem("sync_resolution_archive", existing, after)
+        conflictResolutionItemId = null
+        onSyncConflictResolved?.invoke(itemId)
+        message = "${after.fixed.displayName} 的同步异常已归档。"
         signal()
     }
 
@@ -493,6 +641,8 @@ class InventoryController(context: Context) {
             action = "undo",
             itemId = undo.itemId,
             itemType = undo.before?.type ?: undo.after?.type ?: ItemType.Other,
+            sourceDeviceId = localDeviceId,
+            sourceDeviceName = localDeviceName,
             before = undo.after,
             after = undo.before,
         )
@@ -505,6 +655,7 @@ class InventoryController(context: Context) {
         }.onFailure {
             message = "保存数据库失败：${it.message}"
         }
+        onInventoryChanged?.invoke()
         scanState = scanState.clearedForMode()
         lastUndo = null
         message = "已撤销上一笔：${undo.action}。"
@@ -516,6 +667,7 @@ class InventoryController(context: Context) {
             database.replaceAll(snapshot)
         }.onSuccess {
             message = "已导入 JSON。"
+            onInventoryChanged?.invoke()
         }.onFailure {
             message = "导入失败：${it.message}"
         }.isSuccess
@@ -564,6 +716,7 @@ class InventoryController(context: Context) {
         }.onFailure {
             message = "保存数据库失败：${it.message}"
         }
+        onInventoryChanged?.invoke()
     }
 
     private fun saveItemOnly(after: InventoryItem) {
@@ -575,6 +728,7 @@ class InventoryController(context: Context) {
         }.onFailure {
             message = "保存数据库失败：${it.message}"
         }
+        onInventoryChanged?.invoke()
     }
 
     private fun commitItem(action: String, before: InventoryItem?, after: InventoryItem) {
@@ -585,6 +739,8 @@ class InventoryController(context: Context) {
             action = action,
             itemId = after.id,
             itemType = after.type,
+            sourceDeviceId = localDeviceId,
+            sourceDeviceName = localDeviceName,
             before = before,
             after = after,
         )
@@ -598,6 +754,7 @@ class InventoryController(context: Context) {
         }.onFailure {
             message = "保存数据库失败：${it.message}"
         }
+        onInventoryChanged?.invoke()
     }
 
     private fun trimItems(items: MutableMap<String, InventoryItem>): Map<String, InventoryItem> {
@@ -652,9 +809,20 @@ class InventoryController(context: Context) {
         )
     }
 
-    private fun newTxId(): String = "android-${System.currentTimeMillis().toString(36)}"
+    private fun newTxId(): String {
+        val source = localDeviceId.ifBlank { "android" }.take(12)
+        return "$source-${System.currentTimeMillis().toString(36)}-${newScanId().takeLast(6)}"
+    }
 
-    private val MainTransactionActions = setOf("stock_in", "checkout", "stocktake", "undo")
+    private val MainTransactionActions = setOf(
+        "stock_in",
+        "checkout",
+        "stocktake",
+        "undo",
+        "sync_resolution_in_stock",
+        "sync_resolution_checkout",
+        "sync_resolution_archive",
+    )
 
     private fun signal() {
         runCatching {
