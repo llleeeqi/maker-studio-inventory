@@ -189,8 +189,7 @@ class InventoryController(context: Context) {
 
         val sorting = sortingLocation
         if (sorting != null) {
-            addScanLog(raw, parsed, "accepted", "整理到 ${sorting.name}")
-            moveScannedItemDuringSorting(fixed, sorting)
+            moveScannedItemDuringSorting(raw, parsed, fixed, sorting)
             return
         }
 
@@ -206,14 +205,26 @@ class InventoryController(context: Context) {
         message = "已识别 ${fixed.displayName}，确认固定信息后继续。"
     }
 
-    private fun moveScannedItemDuringSorting(fixed: FixedData, location: LocationValue) {
+    private fun moveScannedItemDuringSorting(
+        raw: String,
+        parsed: ParsedPayload,
+        fixed: FixedData,
+        location: LocationValue,
+    ) {
         val existing = snapshot.items[fixed.id]
         if (existing == null) {
+            addScanLog(raw, parsed, "rejected", "物品未入库，不能整理库位")
             message = "${fixed.displayName} 未入库，不能整理到库位。"
             return
         }
         if (existing.state.status != StockStatus.InStock) {
+            addScanLog(raw, parsed, "rejected", "物品状态为 ${existing.state.status.value}")
             message = "${existing.fixed.displayName} 当前${existing.state.status.label}，未移动。"
+            return
+        }
+        if (existing.state.locationId == location.id) {
+            addScanLog(raw, parsed, "ignored", "物品已经在 ${location.name}")
+            message = "${existing.fixed.displayName} 已经在 ${location.name}，已跳过。"
             return
         }
         val updated = existing.copy(
@@ -224,6 +235,7 @@ class InventoryController(context: Context) {
             ),
         )
         saveItemOnly(updated)
+        addScanLog(raw, parsed, "accepted", "整理到 ${location.name}")
         message = "${updated.fixed.displayName} 已整理到 ${location.name}。"
         signal()
     }

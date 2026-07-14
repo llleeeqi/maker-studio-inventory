@@ -124,6 +124,13 @@ private fun CameraPreviewSurface(
     var lastPayload by remember { mutableStateOf("") }
     var lastPayloadAt by remember { mutableLongStateOf(0L) }
 
+    DisposableEffect(scanner, analysisExecutor) {
+        onDispose {
+            scanner.close()
+            analysisExecutor.shutdownNow()
+        }
+    }
+
     LaunchedEffect(torchOn, camera) {
         camera?.cameraControl?.enableTorch(torchOn)
     }
@@ -131,9 +138,12 @@ private fun CameraPreviewSurface(
     DisposableEffect(running) {
         val providerFuture = ProcessCameraProvider.getInstance(context)
         var provider: ProcessCameraProvider? = null
+        var disposed = false
         val listener = Runnable {
+            if (disposed) return@Runnable
             runCatching {
                 provider = providerFuture.get()
+                if (disposed) return@runCatching
                 provider?.unbindAll()
                 if (!running) {
                     camera = null
@@ -189,6 +199,7 @@ private fun CameraPreviewSurface(
         }
         providerFuture.addListener(listener, ContextCompat.getMainExecutor(context))
         onDispose {
+            disposed = true
             provider?.unbindAll()
             camera = null
         }

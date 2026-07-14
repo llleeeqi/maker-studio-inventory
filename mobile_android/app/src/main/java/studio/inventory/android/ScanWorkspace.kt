@@ -49,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -267,32 +268,65 @@ private fun ScanSessionPanel(controller: InventoryController, modifier: Modifier
         colors = CardDefaults.elevatedCardColors(containerColor = Color(0xFFFFFBEB)),
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Text("${controller.scanMode.label}流程", style = MaterialTheme.typography.titleMedium)
-            Text(controller.message, style = MaterialTheme.typography.bodySmall)
+            val sorting = controller.sortingLocation
+            Text(
+                if (sorting == null) "${controller.scanMode.label}流程" else "整理库位",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                controller.message,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
             HorizontalDivider()
-            WorkflowInfoRow("物品", controller.pendingItem?.let { "${it.id} · ${it.displayName}" } ?: "未确认")
-            if (controller.scanMode != ScanMode.BindLocation) {
-                WorkflowInfoRow("重量", controller.pendingWeightG?.let { "${it.gText()}g" } ?: "未确认")
-                WorkflowInfoRow("数量", controller.pendingQty?.toString() ?: "未记录")
-            }
-            WorkflowInfoRow("库位", controller.pendingLocation?.name ?: "未确认")
-            controller.sortingLocation?.let { WorkflowInfoRow("整理中", it.name) }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                when (controller.scanMode) {
-                    ScanMode.StockIn -> Button(onClick = controller::stockIn, enabled = controller.canStockIn()) { Text("确认入库") }
-                    ScanMode.Stocktake -> Button(onClick = controller::stocktake, enabled = controller.canStocktake()) { Text("确认更新") }
-                    ScanMode.BindLocation -> {
-                        Button(onClick = controller::moveActive, enabled = controller.canMove()) { Text("确认绑定") }
-                        OutlinedButton(
-                            onClick = controller::startLocationSorting,
-                            enabled = controller.pendingLocation != null && controller.sortingLocation == null,
-                        ) { Text("整理该库位") }
-                        if (controller.sortingLocation != null) {
-                            OutlinedButton(onClick = controller::stopLocationSorting) { Text("完成整理") }
+            if (sorting != null) {
+                WorkflowInfoRow("目标", sorting.name)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = controller::stopLocationSorting) { Text("完成整理") }
+                    OutlinedButton(onClick = controller::clearContext) { Text("取消整理") }
+                }
+            } else {
+                val item = controller.pendingItem
+                WorkflowInfoRow("物品", item?.let { "${it.id} · ${it.displayName}" } ?: "未确认")
+                if (controller.scanMode != ScanMode.BindLocation) {
+                    when (item?.type) {
+                        ItemType.Spool -> WorkflowInfoRow(
+                            "重量",
+                            controller.pendingWeightG?.let { "${it.gText()}g" } ?: "未确认",
+                        )
+                        ItemType.Part -> {
+                            WorkflowInfoRow(
+                                "重量",
+                                controller.pendingWeightG?.let { "${it.gText()}g" } ?: "未确认",
+                            )
+                            WorkflowInfoRow("数量", controller.pendingQty?.toString() ?: "未记录")
+                        }
+                        ItemType.Other -> Unit
+                        ItemType.Location, ItemType.Weight -> Unit
+                        null -> {
+                            controller.pendingWeightG?.let { WorkflowInfoRow("重量", "${it.gText()}g") }
+                            controller.pendingQty?.let { WorkflowInfoRow("数量", it.toString()) }
                         }
                     }
                 }
-                OutlinedButton(onClick = controller::clearContext) { Text("取消流程") }
+                if (controller.scanMode != ScanMode.Stocktake) {
+                    WorkflowInfoRow("库位", controller.pendingLocation?.name ?: "未确认")
+                }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    when (controller.scanMode) {
+                        ScanMode.StockIn -> Button(onClick = controller::stockIn, enabled = controller.canStockIn()) { Text("确认入库") }
+                        ScanMode.Stocktake -> Button(onClick = controller::stocktake, enabled = controller.canStocktake()) { Text("确认更新") }
+                        ScanMode.BindLocation -> {
+                            Button(onClick = controller::moveActive, enabled = controller.canMove()) { Text("确认绑定") }
+                            OutlinedButton(
+                                onClick = controller::startLocationSorting,
+                                enabled = controller.pendingLocation != null,
+                            ) { Text("整理该库位") }
+                        }
+                    }
+                    OutlinedButton(onClick = controller::clearContext) { Text("取消流程") }
+                }
             }
         }
     }
@@ -331,8 +365,9 @@ private fun ItemReviewContent(controller: InventoryController, review: ScanRevie
         note = note.trim(),
     )
     val missing = edited.missingRequiredFields()
+    val localStatus = review.local?.state?.status
     val modeAllowsItem = when (controller.scanMode) {
-        ScanMode.StockIn -> review.local?.state?.status != StockStatus.InStock
+        ScanMode.StockIn -> localStatus != StockStatus.InStock && localStatus != StockStatus.Archived
         ScanMode.Stocktake, ScanMode.BindLocation -> review.local?.state?.status == StockStatus.InStock
     }
 
@@ -344,7 +379,9 @@ private fun ItemReviewContent(controller: InventoryController, review: ScanRevie
         }
         if (!modeAllowsItem) {
             Text(
-                if (controller.scanMode == ScanMode.StockIn) {
+                if (localStatus == StockStatus.Archived) {
+                    "该物品已归档，不能继续扫码操作。"
+                } else if (controller.scanMode == ScanMode.StockIn) {
                     "该物品已经在库，请切换到更新库存或绑定库位。"
                 } else {
                     "只有在库物品可以执行${controller.scanMode.label}。"
@@ -504,6 +541,6 @@ private fun ReviewNumberField(label: String, value: String, onValueChange: (Stri
 private fun WorkflowInfoRow(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth()) {
         Text(label, modifier = Modifier.width(68.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, modifier = Modifier.weight(1f))
+        Text(value, modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
