@@ -19,9 +19,9 @@ mobile_android/
 Kotlin + Jetpack Compose + CameraX + ML Kit
 ```
 
-当前 0.5.0 测试 APK 使用 Android SQLite，并加入本地优先的加密 WebDAV 多设备同步、冲突处理和全量备份恢复。
+当前 0.5.1 测试 APK 使用 Android SQLite，并加入本地优先的加密 WebDAV 多设备同步、冲突处理和全量备份恢复。
 
-下载：[GitHub Release v0.5.0](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.0)
+下载：[GitHub Release v0.5.1](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.1)
 
 旧 Web/Capacitor、Flutter 手机实现和早期 JS 检测版已清理。当前仓库只保留原生 Android 主线、虚拟货架测试台、文档和最新测试 APK。
 
@@ -49,6 +49,20 @@ compileSdk = 36
 - 0.4.1 库存列表支持点击详情，并提供二次确认的出库和归档。
 - 0.5.0 增加右上角云状态、WebDAV 同步中心、设备登记、整条记录冲突处理、自动/手动备份和文件导入导出。
 - 0.5.0 已在 Android 12 MuMu 模拟器连接真实 WebDAV，完成同步、备份、导出、导入、恢复暂停和取消恢复验收。
+- 0.5.1 在重量/数量步骤和当前流程浮层提供手动测量值录入，不提供手动二维码 payload 输入。
+- 0.5.1 标签预览改为真实二维码，并按 Android 报告的屏幕 DPI 尽量以 40x30mm 实际尺寸显示。
+- 0.5.1 release 开启 R8 和资源压缩，同时提供通用 APK 与更小的 arm64 APK。
+
+## 0.5.1 改动
+
+| 范围 | 行为 | 状态 |
+|---|---|---|
+| 手动测量 | 耗材可手输毛重；零件可选择按总重自动估算数量或直接输入数量 | MuMu 已验收 |
+| 操作入口 | 确认物品后可点击步骤条“重量/数量”或当前流程浮层“手动录入” | MuMu 已验收 |
+| 输入校验 | 耗材毛重必须大于空盘；零件总重和数量必须为正数 | 已构建 |
+| 标签预览 | SDK 预览不可用时由 ZXing 生成真实 Q 级纠错二维码，不再显示假二维码 | MuMu 已验收 |
+| 实际尺寸 | 读取屏幕像素和 DPI，40x30mm 标签能放下时按报告尺寸 1:1 显示 | MuMu 已验收 |
+| 安装包 | release 启用 R8/资源压缩；通用包保留全部 ABI，arm64 包面向常见实体手机 | 已构建 |
 
 ## 0.5.0 改动
 
@@ -118,7 +132,8 @@ v1;type=weight;value_g=712.4
 | `mobile_android/` | 原生 Android 主线 |
 | `tools/` | 虚拟货架测试台 |
 | `docs/` | 当前设计和后续开发记录 |
-| `studio-inventory-native-0.5.0-debug.apk` | 当前本地最新测试 APK |
+| `studio-inventory-native-0.5.1-universal.apk` | 当前通用 release APK |
+| `studio-inventory-native-0.5.1-arm64.apk` | 更小的 arm64 release APK |
 
 虚拟货架测试台：
 

@@ -4,7 +4,7 @@
 
 ```text
 applicationId: studio.inventory.android
-versionName: 0.4.1
+versionName: 0.5.1
 minSdk: 31
 targetSdk: 36
 compileSdk: 36
@@ -25,24 +25,37 @@ Gson JSON migration/export format
 
 ```bash
 cd mobile_android
-./gradlew assembleDebug
+./gradlew testDebugUnitTest assembleDebug
+./gradlew clean assembleRelease
+./gradlew clean assembleRelease -PtargetAbi=arm64-v8a
 ```
 
 输出：
 
 ```text
 app/build/outputs/apk/debug/app-debug.apk
+app/build/outputs/apk/release/app-release.apk
 ```
 
 仓库根目录也会保留一份便于安装测试：
 
 ```text
-studio-inventory-native-0.4.1-debug.apk
+studio-inventory-native-0.5.1-universal.apk
+studio-inventory-native-0.5.1-arm64.apk
 ```
 
-0.4.1 已在 Android 12 MuMu 模拟器完成主要库存闭环验收。实体手机相机画面、大字体/软键盘和真实标签打印仍需后续复核。逐项测试步骤见 `MANUAL_TEST_MATRIX.md`。
+0.5.1 已在 Android 12 MuMu 模拟器完成手动重量/数量和标签实际尺寸预览验收。实体手机相机画面、大字体/软键盘和真实标签打印仍需后续复核。逐项测试步骤见 `MANUAL_TEST_MATRIX.md`。
 
-下载：[GitHub Release v0.4.1](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.1)
+下载：[GitHub Release v0.5.1](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.1)
+
+## 0.5.1 变更表
+
+| 范围 | 新行为 | 验证 |
+|---|---|---|
+| 手动测量 | 耗材录入毛重；零件按总重估算或直接录入数量 | MuMu 通过 |
+| 标签预览 | SDK bitmap 不可用时使用 ZXing 真实二维码 | MuMu 通过 |
+| 物理尺寸 | 按屏幕报告 DPI 尽量 1:1 显示 40x30mm | MuMu 通过 |
+| APK 精简 | release 开启 R8/资源压缩，支持通用和 arm64 构建 | 构建通过 |
 
 ## 0.4.1 变更表
 
@@ -81,6 +94,8 @@ studio-inventory-native-0.4.1-debug.apk
 - 0.4.1 重写扫码交互层，只维护一个扫码会话状态。
 - 二维码识别后暂停相机分析，确认或取消后自动恢复。
 - 物品、重量和库位必须先在底部确认层确认，确认后才进入当前流程。
+- 确认物品后可点击“重量/数量”步骤或当前流程“手动录入”，无需电子秤生成重量二维码。
+- 正常流程仍不提供手动 payload 输入。
 - 切换模式时如果当前流程未完成，必须确认清空后才能切换。
 - 当前流程常驻底部导航上方，完成或取消后自动消失。
 - 库存列表项可点击查看详情，能看到耗材毛重/空盘/可用重量和零件总重/单重/数量。

@@ -11,13 +11,21 @@ android {
         applicationId = "studio.inventory.android"
         minSdk = 31
         targetSdk = 36
-        versionCode = 50
-        versionName = "0.5.0"
+        versionCode = 51
+        versionName = "0.5.1"
+
+        providers.gradleProperty("targetAbi").orNull?.let { targetAbi ->
+            ndk {
+                abiFilters += targetAbi
+            }
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -57,6 +65,7 @@ dependencies {
     implementation("androidx.camera:camera-view:1.5.3")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
     implementation("com.google.code.gson:gson:2.11.0")
+    implementation("com.google.zxing:core:3.5.4")
     implementation("com.squareup.okhttp3:okhttp:5.4.0")
     implementation("androidx.work:work-runtime:2.11.2")
 

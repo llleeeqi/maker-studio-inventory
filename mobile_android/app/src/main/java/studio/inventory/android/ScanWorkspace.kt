@@ -6,6 +6,7 @@
 package studio.inventory.android
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -67,10 +69,11 @@ fun ScanWorkspacePage(controller: InventoryController, modifier: Modifier = Modi
     var torchOn by remember { mutableStateOf(false) }
     var lastScannerActivityAt by remember { mutableLongStateOf(0L) }
     var showHistory by remember { mutableStateOf(false) }
+    var showManualMeasurement by remember { mutableStateOf(false) }
     var sessionPanelHeightPx by remember { mutableIntStateOf(0) }
     val review = controller.scanReview
     val sessionActive = controller.scanState.hasSession
-    val analyzerRunning = scannerRunning && review == null
+    val analyzerRunning = scannerRunning && review == null && !showManualMeasurement
     val density = LocalDensity.current
     val sessionBottomPadding = if (sessionActive) {
         with(density) { sessionPanelHeightPx.toDp() + 16.dp }
@@ -88,8 +91,18 @@ fun ScanWorkspacePage(controller: InventoryController, modifier: Modifier = Modi
         torchOn = false
     }
 
-    LaunchedEffect(scannerRunning, lastScannerActivityAt, review) {
-        if (!scannerRunning || review != null) return@LaunchedEffect
+    fun openManualMeasurement() {
+        val item = controller.pendingItem
+        when {
+            item == null -> controller.reportError("先扫描并确认物品，再手动录入重量或数量。")
+            controller.scanMode == ScanMode.BindLocation -> controller.reportError("绑定库位模式不需要重量或数量。")
+            item.type == ItemType.Other -> controller.reportError("其他物品不需要重量或数量。")
+            else -> showManualMeasurement = true
+        }
+    }
+
+    LaunchedEffect(scannerRunning, lastScannerActivityAt, review, showManualMeasurement) {
+        if (!scannerRunning || review != null || showManualMeasurement) return@LaunchedEffect
         val marker = lastScannerActivityAt
         delay(ScannerIdlePauseMs)
         if (scannerRunning && controller.scanReview == null && lastScannerActivityAt == marker) {
@@ -160,7 +173,7 @@ fun ScanWorkspacePage(controller: InventoryController, modifier: Modifier = Modi
                     }
                 }
             }
-            item { ScanSteps(controller) }
+            item { ScanSteps(controller, onManualMeasurement = ::openManualMeasurement) }
             if (!sessionActive) {
                 item { IdlePanel(controller) }
             }
@@ -191,6 +204,7 @@ fun ScanWorkspacePage(controller: InventoryController, modifier: Modifier = Modi
         if (sessionActive) {
             ScanSessionPanel(
                 controller = controller,
+                onManualMeasurement = ::openManualMeasurement,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .onSizeChanged { sessionPanelHeightPx = it.height }
@@ -200,6 +214,12 @@ fun ScanWorkspacePage(controller: InventoryController, modifier: Modifier = Modi
     }
 
     review?.let { ScanReviewSheet(controller, it) }
+    if (showManualMeasurement) {
+        ManualMeasurementSheet(
+            controller = controller,
+            onDismiss = { showManualMeasurement = false },
+        )
+    }
 }
 
 @Composable
@@ -225,7 +245,7 @@ private fun ScanModeBar(controller: InventoryController) {
 }
 
 @Composable
-private fun ScanSteps(controller: InventoryController) {
+private fun ScanSteps(controller: InventoryController, onManualMeasurement: () -> Unit) {
     val steps = when (controller.scanMode) {
         ScanMode.StockIn -> listOf(
             "物品" to (controller.pendingItem != null),
@@ -265,6 +285,9 @@ private fun ScanSteps(controller: InventoryController) {
             Box(
                 modifier = Modifier
                     .background(background, RoundedCornerShape(6.dp))
+                    .then(
+                        if (label == "重量/数量") Modifier.clickable(onClick = onManualMeasurement) else Modifier,
+                    )
                     .padding(horizontal = 10.dp, vertical = 6.dp),
             ) {
                 Text(label, color = foreground, style = MaterialTheme.typography.bodySmall)
@@ -286,7 +309,11 @@ private fun IdlePanel(controller: InventoryController) {
 }
 
 @Composable
-private fun ScanSessionPanel(controller: InventoryController, modifier: Modifier = Modifier) {
+private fun ScanSessionPanel(
+    controller: InventoryController,
+    onManualMeasurement: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(containerColor = Color(0xFFFFFBEB)),
@@ -332,6 +359,12 @@ private fun ScanSessionPanel(controller: InventoryController, modifier: Modifier
                     overflow = TextOverflow.Ellipsis,
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (
+                        controller.scanMode != ScanMode.BindLocation &&
+                        controller.pendingItem?.type in listOf(ItemType.Spool, ItemType.Part)
+                    ) {
+                        CompactOutlinedButton(onClick = onManualMeasurement, label = "手动录入")
+                    }
                     when (controller.scanMode) {
                         ScanMode.StockIn -> CompactButton(
                             onClick = controller::stockIn,
@@ -364,6 +397,103 @@ private fun ScanSessionPanel(controller: InventoryController, modifier: Modifier
             }
         }
     }
+}
+
+@Composable
+private fun ManualMeasurementSheet(
+    controller: InventoryController,
+    onDismiss: () -> Unit,
+) {
+    val item = controller.pendingItem ?: return
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var weight by remember(item.id, controller.pendingWeightG) {
+        mutableStateOf(controller.pendingWeightG?.parameterText().orEmpty())
+    }
+    var quantity by remember(item.id, controller.pendingQty) {
+        mutableStateOf(controller.pendingQty?.toString().orEmpty())
+    }
+    var partInput by remember(item.id) {
+        mutableStateOf(
+            if (controller.pendingQty != null && controller.pendingWeightG == null) {
+                ManualPartInput.Quantity
+            } else {
+                ManualPartInput.Weight
+            },
+        )
+    }
+    var error by remember(item.id) { mutableStateOf<String?>(null) }
+    val estimatedQuantity = if (item.type == ItemType.Part && partInput == ManualPartInput.Weight) {
+        quantityFromWeight(weight.toDoubleOrNull(), item.unitWeightG)
+    } else {
+        null
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        ReviewColumn {
+            Text("手动录入重量/数量", style = MaterialTheme.typography.titleLarge)
+            Text("${item.id} · ${item.displayName}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            when (item.type) {
+                ItemType.Spool -> {
+                    Text("空盘重量 ${item.tareG?.gText() ?: "未设置"}g")
+                    ReviewNumberField("当前毛重（g）", weight) { weight = it }
+                    val usable = weight.toDoubleOrNull()?.let { current ->
+                        item.tareG?.let { tare -> current - tare }
+                    }
+                    usable?.takeIf { it > 0.0 }?.let {
+                        Text("预计可用 ${round1(it).gText()}g", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                ItemType.Part -> {
+                    Text("单件重量 ${item.unitWeightG?.parameterText() ?: "未设置"}g")
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilterChip(
+                            selected = partInput == ManualPartInput.Weight,
+                            onClick = { partInput = ManualPartInput.Weight },
+                            label = { Text("按总重") },
+                        )
+                        FilterChip(
+                            selected = partInput == ManualPartInput.Quantity,
+                            onClick = { partInput = ManualPartInput.Quantity },
+                            label = { Text("按数量") },
+                        )
+                    }
+                    if (partInput == ManualPartInput.Weight) {
+                        ReviewNumberField("当前总重量（g）", weight) { weight = it }
+                        estimatedQuantity?.let {
+                            Text("按重量估算 $it 件", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        ReviewNumberField("当前数量", quantity) { quantity = it.filter(Char::isDigit) }
+                    }
+                }
+                else -> Unit
+            }
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            Button(
+                onClick = {
+                    val accepted = controller.confirmManualMeasurement(
+                        weightG = weight.toDoubleOrNull().takeIf {
+                            item.type == ItemType.Spool || partInput == ManualPartInput.Weight
+                        },
+                        quantity = quantity.toIntOrNull().takeIf {
+                            item.type == ItemType.Part && partInput == ManualPartInput.Quantity
+                        },
+                    )
+                    if (accepted) onDismiss() else error = controller.message
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("确认录入") }
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("取消") }
+        }
+    }
+}
+
+private enum class ManualPartInput {
+    Weight,
+    Quantity,
 }
 
 private fun compactSessionStatus(controller: InventoryController): String {

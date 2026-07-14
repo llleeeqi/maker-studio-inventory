@@ -3,9 +3,10 @@
 ## 当前版本
 
 ```text
-当前可测版: v0.5.0
-APK: studio-inventory-native-0.5.0-debug.apk
-Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.0
+当前可测版: v0.5.1
+APK: studio-inventory-native-0.5.1-universal.apk
+推荐实体手机: studio-inventory-native-0.5.1-arm64.apk
+Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.1
 ```
 
 ## 工作流
@@ -16,8 +17,10 @@ Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.0
 确认需求边界
 更新 docs/14-current-progress.md 和相关设计文档
 实现 Android 代码
-./gradlew assembleDebug
-复制 APK 到仓库根目录
+./gradlew testDebugUnitTest assembleDebug
+./gradlew clean assembleRelease
+./gradlew clean assembleRelease -PtargetAbi=arm64-v8a
+复制通用和 arm64 release APK 到仓库根目录
 计算 sha256sum
 git commit
 git tag vX.Y.Z
@@ -30,14 +33,45 @@ gh release create 并上传 APK
 
 ```text
 git diff --check
-./gradlew assembleDebug
-APK 文件存在
+./gradlew testDebugUnitTest assembleDebug
+通用和 arm64 release APK 文件存在
 sha256sum 已记录
 git status 干净
 GitHub Release 可打开
 ```
 
 ## 版本记录
+
+### v0.5.1
+
+手动测量、标签所见所得预览和 APK 精简版本。
+
+已完成：
+
+```text
+耗材可手动录入毛重，并校验毛重大于空盘重量
+零件可按总重自动估算数量，或切换为直接录入数量
+重量/数量步骤块和当前流程浮层都可打开手动录入弹层
+手动录入期间暂停相机分析和 20 秒空闲计时
+标签预览使用真实 Q 级纠错二维码，不再使用占位图案
+读取屏幕像素和 DPI，尽量按 40x30mm 实际尺寸显示预览
+release 启用 R8 和资源压缩，并提供通用、arm64 两种 APK
+```
+
+验证状态：
+
+```text
+./gradlew testDebugUnitTest assembleDebug 通过
+Android 12 MuMu: 耗材 650g / 空盘 200g，正确显示可用 450g
+Android 12 MuMu: 零件 25g / 单重 0.5g，正确估算 50 件
+Android 12 MuMu: 零件直接输入 60 件，旧总重被清除
+40x30mm 预览在 MuMu 报告的 480dpi 下按约 756px 宽显示
+arm64 release 冷启动、ML Kit 初始化、相机启动和标签预览通过
+通用 release 冷启动通过
+通用 APK: 26,713,639 bytes，SHA256 5fc40a10227caf29c4bd5d5aed0a3667a3f986e6dbc51a517d0a549d82c0e32e
+arm64 APK: 11,164,218 bytes，SHA256 d02bf53d4ab30125086fefcd37bc658b0a378d053be7c62109d8229e131f1f28
+真实标签机纸面尺寸和二维码可扫性仍待设备实测
+```
 
 ### v0.5.0
 

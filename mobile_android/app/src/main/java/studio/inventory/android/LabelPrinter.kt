@@ -4,10 +4,19 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextPaint
+import android.text.TextUtils
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +31,16 @@ import com.dothantech.printer.IDzPrinter.PrintProgress
 import com.dothantech.printer.IDzPrinter.PrinterAddress
 import com.dothantech.printer.IDzPrinter.PrinterState
 import com.dothantech.printer.IDzPrinter.ProgressInfo
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel as QrErrorCorrectionLevel
+
+object LabelPrintSpec {
+    const val WidthMm = 40f
+    const val HeightMm = 30f
+    const val PrinterDpi = 200f
+}
 
 data class PrintLabelData(
     val payload: String,
@@ -186,11 +205,13 @@ class LabelPrinterController(context: Context) {
     }
 
     fun renderPreview(label: PrintLabelData): Bitmap? {
-        return runCatching {
+        val sdkBitmap = runCatching {
             drawLabelJob(label)
-            val bitmap = api.getJobPages().firstOrNull()?.copy(Bitmap.Config.ARGB_8888, false)
-            api.abortJob()
-            bitmap
+            api.getJobPages().firstOrNull()?.copy(Bitmap.Config.ARGB_8888, false)
+        }.getOrNull()
+        runCatching { api.abortJob() }
+        return sdkBitmap ?: runCatching {
+            renderSoftwareLabel(label)
         }.getOrNull()
     }
 
@@ -205,7 +226,7 @@ class LabelPrinterController(context: Context) {
         api.setDrawParam(DrawParamName.ERROR_CORRECTION, ErrorCorrectionLevel.Q)
         api.setDrawParam(DrawParamName.CHARACTER_SET, "UTF-8")
         api.setDrawParam(DrawParamName.MARGIN, 2)
-        api.startJob(40.0, 30.0, 0)
+        api.startJob(LabelPrintSpec.WidthMm.toDouble(), LabelPrintSpec.HeightMm.toDouble(), 0)
         api.setItemHorizontalAlignment(0)
         api.setItemVerticalAlignment(0)
 
@@ -216,6 +237,83 @@ class LabelPrinterController(context: Context) {
         api.drawTextRegular(label.line3, leftX, 17.0, leftWidth, 9.0, 2.4, 0)
         api.draw2DQRCode(label.payload, 20.0, 5.0, 18.0)
     }
+
+    private fun renderSoftwareLabel(label: PrintLabelData): Bitmap {
+        val widthPx = mmToPrinterPx(LabelPrintSpec.WidthMm)
+        val heightPx = mmToPrinterPx(LabelPrintSpec.HeightMm)
+        val bitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(Color.WHITE)
+
+        drawTextBox(canvas, label.line1, 2f, 3f, 17f, 7f, 2.8f, maxLines = 2, bold = true)
+        drawTextBox(canvas, label.line2, 2f, 11f, 17f, 5.5f, 2.4f, maxLines = 1)
+        drawTextBox(canvas, label.line3, 2f, 17f, 17f, 9f, 2.4f, maxLines = 3)
+        drawQrCode(canvas, label.payload, 20f, 5f, 18f)
+        return bitmap
+    }
+
+    private fun drawTextBox(
+        canvas: Canvas,
+        text: String,
+        xMm: Float,
+        yMm: Float,
+        widthMm: Float,
+        heightMm: Float,
+        textSizeMm: Float,
+        maxLines: Int,
+        bold: Boolean = false,
+    ) {
+        val clean = text.takeUnless { it.isBlank() } ?: return
+        val widthPx = mmToPrinterPx(widthMm)
+        val heightPx = mmToPrinterPx(heightMm)
+        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            textSize = mmToPrinterPxF(textSizeMm)
+            typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        }
+        val layout = StaticLayout.Builder.obtain(clean, 0, clean.length, paint, widthPx)
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setIncludePad(false)
+            .setMaxLines(maxLines)
+            .setEllipsize(TextUtils.TruncateAt.END)
+            .build()
+        val left = mmToPrinterPxF(xMm)
+        val top = mmToPrinterPxF(yMm)
+        canvas.save()
+        canvas.clipRect(RectF(left, top, left + widthPx, top + heightPx))
+        canvas.translate(left, top)
+        layout.draw(canvas)
+        canvas.restore()
+    }
+
+    private fun drawQrCode(canvas: Canvas, payload: String, xMm: Float, yMm: Float, sizeMm: Float) {
+        val sizePx = mmToPrinterPx(sizeMm)
+        val matrix = QRCodeWriter().encode(
+            payload,
+            BarcodeFormat.QR_CODE,
+            sizePx,
+            sizePx,
+            mapOf(
+                EncodeHintType.CHARACTER_SET to "UTF-8",
+                EncodeHintType.ERROR_CORRECTION to QrErrorCorrectionLevel.Q,
+                EncodeHintType.MARGIN to 2,
+            ),
+        )
+        val pixels = IntArray(sizePx * sizePx)
+        for (y in 0 until sizePx) {
+            for (x in 0 until sizePx) {
+                pixels[y * sizePx + x] = if (matrix[x, y]) Color.BLACK else Color.WHITE
+            }
+        }
+        val qrBitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888).apply {
+            setPixels(pixels, 0, sizePx, 0, 0, sizePx, sizePx)
+        }
+        canvas.drawBitmap(qrBitmap, mmToPrinterPxF(xMm), mmToPrinterPxF(yMm), null)
+    }
+
+    private fun mmToPrinterPx(valueMm: Float): Int = mmToPrinterPxF(valueMm).toInt().coerceAtLeast(1)
+
+    private fun mmToPrinterPxF(valueMm: Float): Float = valueMm * LabelPrintSpec.PrinterDpi / 25.4f
 
     private fun saveLastPrinter(address: PrinterAddress) {
         prefs.edit()

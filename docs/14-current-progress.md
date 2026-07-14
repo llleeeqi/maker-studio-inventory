@@ -13,8 +13,9 @@ mobile_android/
 当前可测包:
 
 ```text
-studio-inventory-native-0.5.0-debug.apk
-GitHub Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.0
+studio-inventory-native-0.5.1-universal.apk
+studio-inventory-native-0.5.1-arm64.apk
+GitHub Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.1
 ```
 
 线上虚拟货架:
@@ -68,11 +69,16 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 - 自动备份每天有变化时最多一份，本机保留 10、云端保留 30；手动备份不自动删除。
 - MuMu 已连接 `http://192.168.3.130:19080` 本地 WebDAV 完成真实上传、变动同步和幂等检查；空闲 16 秒索引数量不增长。
 - MuMu 已完成本机/云端备份、凭据密文检查、文件导出、文件导入、恢复暂停和取消恢复。
+- 0.5.1 确认物品后可点击“重量/数量”步骤或底部当前流程的“手动录入”。
+- 耗材手动录入毛重并实时显示可用重量；毛重不大于空盘时拒绝确认。
+- 零件手动录入支持“按总重”自动估算数量和“按数量”直接输入，两种模式不会保留互相冲突的旧值。
+- 标签预览已使用真实二维码；读取屏幕像素和 DPI，在空间允许时按 40x30mm 报告尺寸 1:1 显示。
+- release 构建已启用 R8 和资源压缩，并支持按 `targetAbi` 构建更小的单 ABI 包。
 
 ## 暂缓事项
 
 - 标签打印的实际纸面效果还没有完成最终验收。
-- App 生成标签预览里，SDK 无法返回 bitmap 时仍使用占位二维码；先不处理，等打印机实测纸面效果后再决定是否内置真二维码预览。
+- 屏幕 DPI 来自 Android/设备报告，模拟器和部分手机可能报告不准；最终纸面效果仍以 200dpi 标签机实打为准。
 - 现有 JSON 只作为测试版存量数据/迁移来源，不再作为后续主要数据层扩展。
 - 还没有用两台实体 Android 设备做真实并发冲突验收；当前冲突规则由单元测试、单机流程和数据库检查覆盖。
 
@@ -95,6 +101,7 @@ docs/16-webdav-sync-v1.md
 ## 当前默认产品原则
 
 - 扫码是主输入，正常流程不提供手动 payload 输入。
+- 测量值允许手动输入；这不等于手动输入或粘贴二维码 payload。
 - 写库存前尽量要求明确按钮确认。
 - 库位整理模式是例外: 进入整理模式后，连续扫已有库存物品可以自动写库位。
 - 未完成上下文里同类信息只保留一个；扫到第二个物品/重量/库位时默认不覆盖。

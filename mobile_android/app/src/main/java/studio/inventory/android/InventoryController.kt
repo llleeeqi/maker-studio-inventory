@@ -396,6 +396,63 @@ class InventoryController(context: Context) {
         signal()
     }
 
+    fun confirmManualMeasurement(weightG: Double?, quantity: Int?): Boolean {
+        val fixed = pendingItem
+        if (fixed == null) {
+            message = "先扫描并确认物品，再手动录入重量或数量。"
+            return false
+        }
+        if (scanMode == ScanMode.BindLocation) {
+            message = "绑定库位模式不需要重量或数量。"
+            return false
+        }
+
+        when (fixed.type) {
+            ItemType.Spool -> {
+                val weight = weightG?.takeIf { it > 0.0 }
+                val tare = fixed.tareG
+                if (weight == null) {
+                    message = "请输入有效毛重。"
+                    return false
+                }
+                if (tare == null || weight <= tare) {
+                    message = "毛重必须大于空盘重量。"
+                    return false
+                }
+                scanState = scanState.copy(weightG = round1(weight), quantity = null, review = null)
+                message = "已手动录入毛重 ${round1(weight).gText()}g。"
+            }
+            ItemType.Part -> {
+                val cleanWeight = weightG?.takeIf { it > 0.0 }?.let(::round1)
+                val resolvedQuantity = quantity?.takeIf { it > 0 }
+                    ?: quantityFromWeight(cleanWeight, fixed.unitWeightG)
+                if (cleanWeight == null && resolvedQuantity == null) {
+                    message = "请输入有效总重量或数量。"
+                    return false
+                }
+                scanState = scanState.copy(
+                    weightG = cleanWeight,
+                    quantity = resolvedQuantity,
+                    review = null,
+                )
+                message = buildString {
+                    append("已手动录入")
+                    cleanWeight?.let { append("总重 ${it.gText()}g") }
+                    if (cleanWeight != null && resolvedQuantity != null) append("，")
+                    resolvedQuantity?.let { append("数量 $it") }
+                    append("。")
+                }
+            }
+            ItemType.Other -> {
+                message = "其他物品不需要重量或数量。"
+                return false
+            }
+            ItemType.Location, ItemType.Weight -> return false
+        }
+        signal()
+        return true
+    }
+
     fun confirmLocationReview(name: String) {
         val review = scanReview as? ScanReview.Location ?: return
         val cleanName = name.trim()
@@ -469,7 +526,10 @@ class InventoryController(context: Context) {
         }
         val after = existing.copy(
             state = existing.state.copy(
-                currentG = if (existing.type == ItemType.Spool) pendingWeightG else existing.state.currentG,
+                currentG = when (existing.type) {
+                    ItemType.Spool, ItemType.Part -> pendingWeightG
+                    else -> existing.state.currentG
+                },
                 currentQty = if (existing.type == ItemType.Part) resolvedPartQty(existing.fixed) else existing.state.currentQty,
                 updatedAt = nowIso(),
             ),

@@ -201,7 +201,6 @@ private fun CameraPreviewSurface(
         onDispose {
             disposed = true
             provider?.unbindAll()
-            camera = null
         }
     }
 

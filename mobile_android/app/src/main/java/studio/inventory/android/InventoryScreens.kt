@@ -3,16 +3,16 @@
 package studio.inventory.android
 
 import android.graphics.Bitmap
+import android.util.DisplayMetrics
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -56,17 +57,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.min
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -435,7 +437,7 @@ fun AddLabelPage(
             },
         )
         generatedLabel?.let { label ->
-            LabelPreviewCard(label, previewBitmap)
+            LabelPreviewCard(previewBitmap)
             ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("二维码内容", style = MaterialTheme.typography.titleMedium)
@@ -520,99 +522,66 @@ private enum class PrinterPermissionAction {
 }
 
 @Composable
-private fun LabelPreviewCard(label: PrintLabelData, bitmap: Bitmap?) {
+private fun LabelPreviewCard(bitmap: Bitmap?) {
+    val view = LocalView.current
+    val density = LocalDensity.current
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val metrics = remember(view, configuration.orientation) {
+        DisplayMetrics().also { displayMetrics ->
+            @Suppress("DEPRECATION")
+            view.display?.getRealMetrics(displayMetrics)
+            if (displayMetrics.widthPixels <= 0) {
+                displayMetrics.setTo(view.resources.displayMetrics)
+            }
+        }
+    }
+    val xDpi = metrics.xdpi.takeIf { it in 100f..1000f } ?: metrics.densityDpi.toFloat()
+    val yDpi = metrics.ydpi.takeIf { it in 100f..1000f } ?: metrics.densityDpi.toFloat()
+    val physicalWidthDp = with(density) { (LabelPrintSpec.WidthMm * xDpi / 25.4f).toDp() }
+    val physicalHeightDp = with(density) { (LabelPrintSpec.HeightMm * yDpi / 25.4f).toDp() }
+    val screenWidthMm = metrics.widthPixels * 25.4f / xDpi
+    val screenHeightMm = metrics.heightPixels * 25.4f / yDpi
+
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("标签预览", style = MaterialTheme.typography.titleMedium)
-            Text("40 x 30 mm", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                if (bitmap != null) {
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(4f / 3f)
-                            .border(1.dp, Color.Black)
-                            .background(Color.White),
-                    )
-                } else {
-                    FallbackLabelPreview(label)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FallbackLabelPreview(label: PrintLabelData) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(4f / 3f)
-            .border(1.dp, Color.Black)
-            .background(Color.White)
-            .padding(10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-        ) {
-            Text(label.line1, color = Color.Black, style = MaterialTheme.typography.titleMedium)
-            Text(label.line2, color = Color.Black, style = MaterialTheme.typography.bodyMedium)
-            Text(label.line3, color = Color.Black, style = MaterialTheme.typography.bodyMedium)
-        }
-        QrPreviewPattern(
-            payload = label.payload,
-            modifier = Modifier
-                .width(132.dp)
-                .aspectRatio(1f)
-                .border(1.dp, Color.Black),
-        )
-    }
-}
-
-@Composable
-private fun QrPreviewPattern(payload: String, modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier.background(Color.White)) {
-        val cells = 25
-        val cell = size.minDimension / cells
-        val seed = payload.fold(0) { acc, char -> (acc * 31 + char.code) and 0x7fffffff }
-
-        fun drawCell(x: Int, y: Int) {
-            drawRect(
-                color = Color.Black,
-                topLeft = Offset(x * cell, y * cell),
-                size = Size(cell, cell),
+            Text(
+                "40 × 30 mm · 屏幕报告约 ${screenWidthMm.toInt()} × ${screenHeightMm.toInt()} mm",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-
-        fun drawFinder(left: Int, top: Int) {
-            for (y in 0 until 7) {
-                for (x in 0 until 7) {
-                    val border = x == 0 || y == 0 || x == 6 || y == 6
-                    val center = x in 2..4 && y in 2..4
-                    if (border || center) drawCell(left + x, top + y)
-                }
-            }
-        }
-
-        drawFinder(1, 1)
-        drawFinder(cells - 8, 1)
-        drawFinder(1, cells - 8)
-        for (y in 0 until cells) {
-            for (x in 0 until cells) {
-                val inFinder =
-                    (x in 1..7 && y in 1..7) ||
-                        (x in cells - 8 until cells - 1 && y in 1..7) ||
-                        (x in 1..7 && y in cells - 8 until cells - 1)
-                if (!inFinder && ((x * 17 + y * 23 + seed) % 7 < 3)) {
-                    drawCell(x, y)
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val scale = min(1f, maxWidth.value / physicalWidthDp.value)
+                val shownWidth = physicalWidthDp * scale
+                val shownHeight = physicalHeightDp * scale
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        if (bitmap != null) {
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = "40 × 30 mm 标签打印预览",
+                                contentScale = ContentScale.FillBounds,
+                                modifier = Modifier
+                                    .size(shownWidth, shownHeight)
+                                    .border(1.dp, Color.Black)
+                                    .background(Color.White),
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(shownWidth, shownHeight)
+                                    .border(1.dp, Color.Black)
+                                    .background(Color.White),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text("正在生成预览", color = Color.DarkGray)
+                            }
+                        }
+                    }
+                    Text(
+                        if (scale == 1f) "按当前屏幕报告尺寸 1:1 显示" else "屏幕空间不足，已等比缩小",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
             }
         }
