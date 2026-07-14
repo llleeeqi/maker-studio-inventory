@@ -209,6 +209,109 @@ class InventoryDatabase(
         }
     }
 
+    fun upsertLocation(location: LocationValue) {
+        writableDatabase.insertWithOnConflict(
+            "locations",
+            null,
+            locationValues(location),
+            SQLiteDatabase.CONFLICT_REPLACE,
+        )
+    }
+
+    fun saveItem(item: InventoryItem, retainedItemIds: Set<String>) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.insertWithOnConflict("items", null, itemValues(item), SQLiteDatabase.CONFLICT_REPLACE)
+            deleteItemsNotRetained(db, retainedItemIds)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun saveItemWithTransaction(
+        item: InventoryItem,
+        transaction: InventoryTransaction,
+        retainedItemIds: Set<String>,
+    ) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.insertWithOnConflict("items", null, itemValues(item), SQLiteDatabase.CONFLICT_REPLACE)
+            db.insertWithOnConflict(
+                "transactions",
+                null,
+                transactionValues(transaction),
+                SQLiteDatabase.CONFLICT_REPLACE,
+            )
+            deleteItemsNotRetained(db, retainedItemIds)
+            pruneTransactions(db)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun applyUndo(
+        itemId: String,
+        restoredItem: InventoryItem?,
+        transaction: InventoryTransaction,
+        retainedItemIds: Set<String>,
+    ) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            if (restoredItem == null) {
+                db.delete("items", "id = ?", arrayOf(itemId))
+            } else {
+                db.insertWithOnConflict("items", null, itemValues(restoredItem), SQLiteDatabase.CONFLICT_REPLACE)
+            }
+            db.insertWithOnConflict(
+                "transactions",
+                null,
+                transactionValues(transaction),
+                SQLiteDatabase.CONFLICT_REPLACE,
+            )
+            deleteItemsNotRetained(db, retainedItemIds)
+            pruneTransactions(db)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun appendScanLog(log: ScanLogEntry) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.insertWithOnConflict("scan_logs", null, scanLogValues(log), SQLiteDatabase.CONFLICT_REPLACE)
+            db.execSQL(
+                "DELETE FROM scan_logs WHERE scan_id NOT IN " +
+                    "(SELECT scan_id FROM scan_logs ORDER BY created_at DESC LIMIT 50)",
+            )
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    private fun deleteItemsNotRetained(db: SQLiteDatabase, retainedItemIds: Set<String>) {
+        if (retainedItemIds.isEmpty()) {
+            db.delete("items", null, null)
+            return
+        }
+        val placeholders = retainedItemIds.joinToString(",") { "?" }
+        db.delete("items", "id NOT IN ($placeholders)", retainedItemIds.toTypedArray())
+    }
+
+    private fun pruneTransactions(db: SQLiteDatabase) {
+        db.execSQL(
+            "DELETE FROM transactions WHERE tx_id NOT IN " +
+                "(SELECT tx_id FROM transactions ORDER BY created_at DESC LIMIT 250)",
+        )
+    }
+
     private fun itemValues(item: InventoryItem): ContentValues = ContentValues().apply {
         put("id", item.id)
         put("type", item.type.payload)

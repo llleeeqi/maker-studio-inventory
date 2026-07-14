@@ -4,7 +4,7 @@
 
 ```text
 applicationId: studio.inventory.android
-versionName: 0.4.0
+versionName: 0.4.1
 minSdk: 31
 targetSdk: 36
 compileSdk: 36
@@ -37,25 +37,30 @@ app/build/outputs/apk/debug/app-debug.apk
 仓库根目录也会保留一份便于安装测试：
 
 ```text
-studio-inventory-native-0.4.0-debug.apk
+studio-inventory-native-0.4.1-debug.apk
 ```
 
-当前没有 Android 设备，0.4.0 已构建但尚未完成真机验收。逐项测试步骤见 `MANUAL_TEST_MATRIX.md`。
+0.4.1 已在 Android 12 MuMu 模拟器完成主要库存闭环验收。实体手机相机画面、大字体/软键盘和真实标签打印仍需后续复核。逐项测试步骤见 `MANUAL_TEST_MATRIX.md`。
 
-下载：[GitHub Release v0.4.0](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.0)
+下载：[GitHub Release v0.4.1](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.1)
 
-## 0.4.0 变更表
+## 0.4.1 变更表
 
 | 范围 | 新行为 | 验证 |
 |---|---|---|
 | 扫码会话 | 使用单一 `ScanWorkflowState` 管理模式、物品、重量/数量、库位、整理状态和当前确认 | 编译通过 |
-| 确认等待 | 扫码后暂停相机分析，物品、重量和库位分别在底部确认层处理 | 待真机 |
-| 底部浮层 | 当前流程常驻底部导航上方，只显示当前模式需要的字段 | 待真机 |
+| 确认等待 | 扫码后暂停相机分析，物品、重量和库位分别在底部确认层处理 | MuMu 通过 |
+| 底部浮层 | 当前流程常驻底部导航上方，只显示当前模式需要的字段 | MuMu 通过 |
 | 模式切换 | 未完成流程切换模式时先确认清空 | 编译通过 |
 | 库位整理 | 连续扫码自动移动；重复扫已在目标库位的物品时跳过 | 编译通过 |
-| 库存详情 | 展示关键变量、位置、时间和最近三条主流水 | 待真机 |
+| 库存详情 | 展示关键变量、位置、格式化时间和最近三条主流水 | MuMu 通过 |
 | 出库/归档 | 从详情层发起并二次确认；归档物品不再允许扫码操作 | 编译通过 |
-| 相机生命周期 | 20 秒空闲暂停，确认期间停分析，离页释放扫描器和分析线程 | 待真机 |
+| 相机生命周期 | 20 秒空闲暂停，确认期间停分析，离页释放扫描器和分析线程 | MuMu 通过 |
+| 固定参数精度 | 单重和空盘参数按原精度回填，不因确认页格式化改写数据 | 单元测试和 MuMu 通过 |
+| 视觉层级 | 中性灰+青绿主题、图标底栏、紧凑相机控制和流程浮层 | MuMu 通过 |
+| SQLite 写入 | 日常操作按物品、库位、流水和扫码日志增量写入，整表替换只用于迁移/导入 | SQLite 直查通过 |
+| 库存搜索 | 搜索固定字段、备注、中文库位，并组合类型和状态筛选 | 单元测试和 MuMu 通过 |
+| 更新下载 | 流水页显示版本和可点击 GitHub 仓库地址 | MuMu 通过 |
 
 交互边界见 `INTERACTION_REWRITE.md`，完整验收步骤见 `MANUAL_TEST_MATRIX.md`。
 
@@ -73,7 +78,7 @@ studio-inventory-native-0.4.0-debug.apk
 - 可开启启动自动连接打标机，优先连接上次打印机。
 - 40x30mm 标签模板：左侧三行文字，右侧 Q 级纠错二维码。
 - 扫码页顶部三模式：入库 / 更新库存 / 绑定库位。
-- 0.4.0 重写扫码交互层，只维护一个扫码会话状态。
+- 0.4.1 重写扫码交互层，只维护一个扫码会话状态。
 - 二维码识别后暂停相机分析，确认或取消后自动恢复。
 - 物品、重量和库位必须先在底部确认层确认，确认后才进入当前流程。
 - 切换模式时如果当前流程未完成，必须确认清空后才能切换。
@@ -85,3 +90,5 @@ studio-inventory-native-0.4.0-debug.apk
 - 本地 SQLite 四表保存：items / locations / transactions / scan_logs。
 - 旧 JSON 测试数据会在数据库为空时自动迁移。
 - 主流水只记录入库、出库、更新重量/数量和撤销；绑定库位、整理库位、归档和固定字段修改不进流水。
+- 日常数据库写入使用单条 upsert/append；旧 JSON 迁移和显式导入才执行整库替换。
+- 流水页显示当前版本和项目仓库，可跳转 GitHub Release 下载更新。

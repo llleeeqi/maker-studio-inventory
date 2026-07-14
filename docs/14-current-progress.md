@@ -13,8 +13,8 @@ mobile_android/
 当前可测包:
 
 ```text
-studio-inventory-native-0.4.0-debug.apk
-GitHub Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.0
+studio-inventory-native-0.4.1-debug.apk
+GitHub Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.1
 ```
 
 线上虚拟货架:
@@ -43,6 +43,16 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 - 0.4.0 当前流程常驻底部导航上方，并按模式和物品类型精简字段。
 - 0.4.0 已补模式切换确认、冲突选择、出库/归档二次确认和库位整理重复扫码跳过。
 - 0.4.0 离开扫码页时释放相机分析线程和 ML Kit 扫描器。
+- 0.4.1 将主题、底部导航、相机控制和当前流程浮层压缩成适合一屏操作的布局。
+- 0.4.1 将扫码业务判断集中到 `ScanWorkflowRules`，并补充模式、状态、替换、入库、盘点和整理库位单元测试。
+- 0.4.1 修复库存卡片显示内部搜索索引、详情日期/流水显示原始数据库值的问题。
+- 0.4.1 修复零件单重 `0.42g` 在确认页被改写成 `0.4g` 的精度问题。
+- 0.4.1 已在 Android 12 MuMu 模拟器完成三类物品入库、盘点、绑定/整理库位、出库、详情和流水验收。
+- 20 秒无扫码自动暂停已在 MuMu 验证。
+- SQLite 日常保存已从整库重写改为物品、库位、流水、扫码日志分别增量写入；整库替换只用于迁移和导入。
+- 直查数据库确认更新库存只替换目标物品行，其他库存行不变，主流水和扫码日志按规则追加。
+- 库存搜索已覆盖 ID、名称、品牌、材料、颜色、备注、中文库位、类型和状态组合条件。
+- 流水页显示当前版本和 GitHub 仓库地址，点击可跳转浏览器下载更新。
 - 新增页只生成/打印标签，不保存纯建档记录。
 - 入库必须扫到物品、重量/数量、库位，并点击入库确认。
 
@@ -55,10 +65,9 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 
 ## 下一轮重点
 
-- 没有 Android 设备，0.4.0 仍需按 `mobile_android/MANUAL_TEST_MATRIX.md` 完成真机验收。
-- 重点检查相机启动、确认后恢复、小屏和软键盘、底部浮层与底部导航是否重叠。
+- 在实体 Android 手机上复核真实相机画面、扫码速度、大字体和软键盘布局。
 - 打印机到手后验证 40x30mm 纸面排版和二维码可扫性。
-- 真机验收通过后再排导出/导入与 Room 迁移优先级。
+- 打印实测后再排导出/导入与 Room 迁移优先级。
 
 主要参考文档:
 
@@ -77,7 +86,7 @@ docs/15-release-workflow-and-project-management.md
 - 未完成上下文里同类信息只保留一个；扫到第二个物品/重量/库位时默认不覆盖。
 - 如果标签固定信息和本地记录冲突，必须提示用户选择，不自动覆盖。
 
-## 0.4.0 已实现操作逻辑
+## 0.4.1 已实现操作逻辑
 
 扫码页第一屏改成一屏库存工作台：
 

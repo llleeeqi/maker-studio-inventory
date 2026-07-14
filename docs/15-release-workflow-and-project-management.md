@@ -3,9 +3,9 @@
 ## 当前版本
 
 ```text
-当前可测版: v0.4.0
-APK: studio-inventory-native-0.4.0-debug.apk
-Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.0
+当前可测版: v0.4.1
+APK: studio-inventory-native-0.4.1-debug.apk
+Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.1
 ```
 
 ## 工作流
@@ -38,6 +38,41 @@ GitHub Release 可打开
 ```
 
 ## 版本记录
+
+### v0.4.1
+
+模拟器验收和交互收口版本。
+
+已完成：
+
+```text
+中性灰+青绿主题和图标底部导航
+相机控制压缩为启动/暂停主按钮和手电筒
+当前流程浮层缩短，不遮挡步骤、相机控制和底部导航
+物品确认默认显示摘要，需要时再展开编辑
+扫码规则集中到 ScanWorkflowRules 并补单元测试
+库存卡片只显示备注，不泄露内部 searchText
+详情和流水使用中文动作及可读日期时间
+固定重量参数保持原精度，0.42g 不再被改写为 0.4g
+SQLite 日常操作改为逐表增量 upsert/append，整库替换只用于迁移/导入
+库存搜索规则抽出并覆盖固定字段、库位、类型和状态组合测试
+流水页显示版本和可点击 GitHub 仓库地址
+debug 构建提供受保护的自动化扫码广播，release 构建不包含入口
+```
+
+验证状态：
+
+```text
+./gradlew testDebugUnitTest assembleDebug 通过
+APK 版本 0.4.1 (41)
+SHA256: 92db41731ff4464847b710fd63ca5c530546117b18c3e300e2d9a129fa812db5
+Android 12 MuMu: 耗材/零件/其他入库通过
+更新库存、绑定库位、整理库位、重复扫码跳过、出库通过
+模式切换保留/清空、库存详情、流水、20 秒自动暂停通过
+SQLite 直查：更新目标行、保留其他行、追加流水/日志通过
+库存搜索品牌关键字、类型过滤和仓库跳转通过
+实体手机相机/大字体/软键盘和 40x30mm 真实打印待复核
+```
 
 ### v0.4.0
 
@@ -120,21 +155,18 @@ tools 虚拟货架耗材/重量/库位扫码链路可用
 
 ## 当前项目队列
 
-### P0: 完成 0.4.0 真机验收
+### P0: 实体设备和标签打印复核
 
 ```text
-按 mobile_android/MANUAL_TEST_MATRIX.md 逐项测试
-验证相机启动、扫码后暂停、确认/取消后恢复
-验证小屏、大字体、软键盘下没有重叠和遮挡
-验证底部当前流程不遮挡底部导航
-验证库存详情、出库和归档确认
+实体 Android 手机复核相机画面和扫码速度
+复核大字体、软键盘下没有重叠和遮挡
+标签机到货后验证 40x30mm 纸面排版和二维码可扫性
 ```
 
 ### P1: 完整日常闭环
 
 ```text
 增加导出/导入入口
-打印机到货后验证 40x30mm 纸面效果
 根据纸面效果决定是否调整标签到 50x40 或 60x40
 ```
 

@@ -19,9 +19,9 @@ mobile_android/
 Kotlin + Jetpack Compose + CameraX + ML Kit
 ```
 
-当前 0.4.0 测试 APK 已使用 Android SQLite 四表；旧 JSON snapshot 只作为自动迁移源。
+当前 0.4.1 测试 APK 已使用 Android SQLite 四表；旧 JSON snapshot 只作为自动迁移源。
 
-下载：[GitHub Release v0.4.0](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.0)
+下载：[GitHub Release v0.4.1](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.1)
 
 旧 Web/Capacitor、Flutter 手机实现和早期 JS 检测版已清理。当前仓库只保留原生 Android 主线、虚拟货架测试台、文档和最新测试 APK。
 
@@ -45,22 +45,27 @@ compileSdk = 36
 - 入库必须补齐物品、重量/数量和库位，并点击确认。
 - 库位整理模式允许进入后连续扫码自动更新库位。
 - SQLite 数据库使用 `items / locations / transactions / scan_logs` 四张表。
-- 0.4.0 已重写扫码会话、扫码后确认、模式切换和底部当前流程浮层。
-- 0.4.0 库存列表支持点击详情，并提供二次确认的出库和归档。
+- 0.4.1 已重写扫码会话、扫码后确认、模式切换和底部当前流程浮层。
+- 0.4.1 库存列表支持点击详情，并提供二次确认的出库和归档。
+- 0.4.1 已在 Android 12 MuMu 模拟器完成入库、更新库存、绑定/整理库位、出库、详情和流水验收。
 
-## 0.4.0 改动
+## 0.4.1 改动
 
-| 范围 | 原问题 | 0.4.0 行为 | 状态 |
+| 范围 | 原问题 | 0.4.1 行为 | 状态 |
 |---|---|---|---|
 | 扫码状态 | 物品、重量、库位和冲突状态分散，容易互相覆盖 | 统一为一个 `ScanWorkflowState`，一个流程只保留一套当前上下文 | 已构建 |
-| 扫码确认 | 扫码结果塞在页面里，等待和确认不清晰 | 识别后暂停相机分析，在 App 内底部确认层确认或取消 | 已构建，待真机 |
-| 当前流程 | 提醒区容易挤压、覆盖页面 | 当前流程浮在底部导航上方，并按模式和物品类型只显示必要字段 | 已构建，待真机 |
+| 扫码确认 | 扫码结果塞在页面里，等待和确认不清晰 | 识别后暂停相机分析，在 App 内底部确认层确认或取消 | MuMu 已验收 |
+| 当前流程 | 提醒区容易挤压、覆盖页面 | 当前流程浮在底部导航上方，并按模式和物品类型只显示必要字段 | MuMu 已验收 |
 | 模式切换 | 未完成流程可能被直接丢失 | 切换入库、更新库存、绑定库位前确认是否清空 | 已构建 |
 | 库位整理 | 连续扫码可能重复写同一物品 | 已在目标库位的物品直接跳过，不重复更新时间和成功日志 | 已构建 |
-| 库存详情 | 列表不能展开查看关键变量 | 点击查看耗材重量、零件数量、库位、时间和最近流水 | 已构建，待真机 |
-| 低频动作 | 出库和归档入口不明确 | 从库存详情发起，并再次确认 | 已构建，待真机 |
+| 库存详情 | 列表不能展开查看关键变量 | 点击查看耗材重量、零件数量、库位、格式化时间和最近流水 | MuMu 已验收 |
+| 低频动作 | 出库和归档入口不明确 | 从库存详情发起，并再次确认 | MuMu 已验收 |
 | 归档边界 | 归档标签仍可能重新进入扫码流程 | 归档物品拒绝入库、盘点、绑定和整理库位 | 已构建 |
-| 相机资源 | 离开扫码页后分析线程和扫描器可能残留 | 页面销毁时释放 CameraX 分析线程和 ML Kit 扫描器 | 已构建，待真机 |
+| 相机资源 | 离开扫码页后分析线程和扫描器可能残留 | 页面销毁时释放资源，20 秒无扫码自动暂停 | MuMu 已验收 |
+| 零件精度 | `0.42g` 单重会被确认页四舍五入成 `0.4g` | 固定重量参数按原精度回填和显示，420g 正确换算为 1000 件 | 单元测试和 MuMu 已验收 |
+| 数据落盘 | 每次保存会整批重写四张表 | 日常操作改为物品、库位、流水、扫码日志分别增量写入；整表替换只用于迁移/导入 | SQLite 直查已验收 |
+| 库存查找 | 搜索和类型/状态组合条件缺少独立验证 | 支持 ID、名称、品牌、材料、颜色、备注和库位，组合类型/状态过滤 | 单元测试和 MuMu 已验收 |
+| 更新入口 | App 内找不到项目和新版本下载位置 | 流水页显示版本和可点击 GitHub 仓库地址 | MuMu 已验收 |
 
 ## 二维码协议
 
@@ -97,7 +102,7 @@ v1;type=weight;value_g=712.4
 | `mobile_android/` | 原生 Android 主线 |
 | `tools/` | 虚拟货架测试台 |
 | `docs/` | 当前设计和后续开发记录 |
-| `studio-inventory-native-0.4.0-debug.apk` | 当前保留的最新测试 APK |
+| `studio-inventory-native-0.4.1-debug.apk` | 当前本地最新测试 APK |
 
 虚拟货架测试台：
 
@@ -117,17 +122,16 @@ v1;type=weight;value_g=712.4
 - [docs/04-next-steps.md](./docs/04-next-steps.md)：下一阶段开发清单。
 - [docs/14-current-progress.md](./docs/14-current-progress.md)：当前实测进度和上下文恢复入口。
 - [docs/15-release-workflow-and-project-management.md](./docs/15-release-workflow-and-project-management.md)：发版流程、版本记录和项目队列。
-- [mobile_android/INTERACTION_REWRITE.md](./mobile_android/INTERACTION_REWRITE.md)：0.4.0 交互重写边界。
-- [mobile_android/MANUAL_TEST_MATRIX.md](./mobile_android/MANUAL_TEST_MATRIX.md)：0.4.0 真机验收表。
+- [mobile_android/INTERACTION_REWRITE.md](./mobile_android/INTERACTION_REWRITE.md)：0.4.1 交互重写边界。
+- [mobile_android/MANUAL_TEST_MATRIX.md](./mobile_android/MANUAL_TEST_MATRIX.md)：0.4.1 验收表。
 
 ## 后续方向
 
 近期：
 
-1. 按 `mobile_android/MANUAL_TEST_MATRIX.md` 完成 0.4.0 真机验收。
-2. 根据真机截图修复小屏、大字体、软键盘下的重叠和遮挡。
-3. 标签机到手后验证 40x30mm 实际打印和二维码可扫性。
-4. 补导出/导入能力。
+1. 在实体 Android 手机上复核相机画面、软键盘和大字体布局。
+2. 标签机到手后验证 40x30mm 实际打印和二维码可扫性。
+3. 补导出/导入能力。
 
 中期：
 

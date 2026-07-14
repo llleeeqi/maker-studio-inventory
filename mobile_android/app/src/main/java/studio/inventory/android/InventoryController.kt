@@ -212,23 +212,29 @@ class InventoryController(context: Context) {
         location: LocationValue,
     ) {
         val existing = snapshot.items[fixed.id]
-        if (existing == null) {
-            addScanLog(raw, parsed, "rejected", "物品未入库，不能整理库位")
-            message = "${fixed.displayName} 未入库，不能整理到库位。"
-            return
+        when (ScanWorkflowRules.sortingDisposition(existing, location)) {
+            SortingDisposition.Missing -> {
+                addScanLog(raw, parsed, "rejected", "物品未入库，不能整理库位")
+                message = "${fixed.displayName} 未入库，不能整理到库位。"
+                return
+            }
+            SortingDisposition.NotInStock -> {
+                val known = requireNotNull(existing)
+                addScanLog(raw, parsed, "rejected", "物品状态为 ${known.state.status.value}")
+                message = "${known.fixed.displayName} 当前${known.state.status.label}，未移动。"
+                return
+            }
+            SortingDisposition.AlreadyThere -> {
+                val known = requireNotNull(existing)
+                addScanLog(raw, parsed, "ignored", "物品已经在 ${location.name}")
+                message = "${known.fixed.displayName} 已经在 ${location.name}，已跳过。"
+                return
+            }
+            SortingDisposition.Move -> Unit
         }
-        if (existing.state.status != StockStatus.InStock) {
-            addScanLog(raw, parsed, "rejected", "物品状态为 ${existing.state.status.value}")
-            message = "${existing.fixed.displayName} 当前${existing.state.status.label}，未移动。"
-            return
-        }
-        if (existing.state.locationId == location.id) {
-            addScanLog(raw, parsed, "ignored", "物品已经在 ${location.name}")
-            message = "${existing.fixed.displayName} 已经在 ${location.name}，已跳过。"
-            return
-        }
-        val updated = existing.copy(
-            state = existing.state.copy(
+        val known = requireNotNull(existing)
+        val updated = known.copy(
+            state = known.state.copy(
                 locationId = location.id,
                 locationName = location.name,
                 updatedAt = nowIso(),
@@ -242,15 +248,16 @@ class InventoryController(context: Context) {
 
     fun confirmItemReview(edited: FixedData, keepLocal: Boolean = false) {
         val review = scanReview as? ScanReview.Item ?: return
-        if (review.local?.state?.status == StockStatus.Archived) {
+        val localStatus = review.local?.state?.status
+        if (localStatus == StockStatus.Archived) {
             message = "该物品已归档，不能继续扫码操作。"
             return
         }
-        if (scanMode != ScanMode.StockIn && review.local?.state?.status != StockStatus.InStock) {
+        if (!ScanWorkflowRules.allowsItem(scanMode, localStatus) && scanMode != ScanMode.StockIn) {
             message = "只有在库物品可以执行${scanMode.label}。"
             return
         }
-        if (scanMode == ScanMode.StockIn && review.local?.state?.status == StockStatus.InStock) {
+        if (!ScanWorkflowRules.allowsItem(scanMode, localStatus)) {
             message = "该物品已经在库，请切换到更新库存或绑定库位。"
             return
         }
@@ -266,20 +273,7 @@ class InventoryController(context: Context) {
             saveItemOnly(local.copy(type = selected.type, fixed = selected))
         }
 
-        val replacing = pendingItem != null && pendingItem?.id != selected.id
-        val retainedWeight = if (replacing || selected.type == ItemType.Other) null else pendingWeightG
-        val quantity = if (selected.type == ItemType.Part) {
-            quantityFromWeight(retainedWeight, selected.unitWeightG)
-        } else {
-            if (replacing) null else pendingQty
-        }
-        scanState = scanState.copy(
-            item = selected,
-            weightG = retainedWeight,
-            quantity = quantity,
-            location = if (replacing) null else pendingLocation,
-            review = null,
-        )
+        scanState = ScanWorkflowRules.confirmItem(scanState, selected)
         message = if (local == null) {
             "已确认 ${selected.displayName}，继续补齐当前流程。"
         } else {
@@ -332,21 +326,8 @@ class InventoryController(context: Context) {
     }
 
     fun canStockIn(): Boolean {
-        val fixed = pendingItem ?: return false
-        val location = pendingLocation ?: return false
-        if (location.id.isBlank()) return false
-        val existingStatus = snapshot.items[fixed.id]?.state?.status
-        if (existingStatus == StockStatus.InStock || existingStatus == StockStatus.Archived) return false
-        return when (fixed.type) {
-            ItemType.Spool -> {
-                val current = pendingWeightG
-                val tare = fixed.tareG
-                current != null && tare != null && current > tare
-            }
-            ItemType.Part -> resolvedPartQty(fixed) != null
-            ItemType.Other -> true
-            ItemType.Location, ItemType.Weight -> false
-        }
+        val existingStatus = pendingItem?.id?.let { snapshot.items[it]?.state?.status }
+        return ScanWorkflowRules.canStockIn(scanState, existingStatus)
     }
 
     fun stockIn() {
@@ -376,13 +357,7 @@ class InventoryController(context: Context) {
     }
 
     fun canStocktake(): Boolean {
-        val existing = activeItem ?: return false
-        if (existing.state.status != StockStatus.InStock) return false
-        return when (existing.type) {
-            ItemType.Spool -> pendingWeightG != null && pendingWeightG!! > (existing.fixed.tareG ?: 0.0)
-            ItemType.Part -> resolvedPartQty(existing.fixed) != null
-            else -> false
-        }
+        return ScanWorkflowRules.canStocktake(scanState, activeItem)
     }
 
     fun stocktake() {
@@ -405,8 +380,7 @@ class InventoryController(context: Context) {
     }
 
     fun canMove(): Boolean {
-        val existing = activeItem ?: return false
-        return existing.state.status == StockStatus.InStock && pendingLocation != null
+        return ScanWorkflowRules.canMove(scanState, activeItem)
     }
 
     fun moveActive() {
@@ -526,7 +500,11 @@ class InventoryController(context: Context) {
             items = trimItems(items),
             transactions = (snapshot.transactions + transaction).takeLast(250),
         ).trimmed()
-        save()
+        runCatching {
+            database.applyUndo(undo.itemId, undo.before, transaction, snapshot.items.keys)
+        }.onFailure {
+            message = "保存数据库失败：${it.message}"
+        }
         scanState = scanState.clearedForMode()
         lastUndo = null
         message = "已撤销上一笔：${undo.action}。"
@@ -535,7 +513,7 @@ class InventoryController(context: Context) {
     fun importSnapshot(raw: String): Boolean {
         return runCatching {
             snapshot = gson.fromJson(raw, InventorySnapshot::class.java).trimmed()
-            save()
+            database.replaceAll(snapshot)
         }.onSuccess {
             message = "已导入 JSON。"
         }.onFailure {
@@ -546,24 +524,25 @@ class InventoryController(context: Context) {
     fun exportSnapshot(): String = gson.toJson(snapshot)
 
     private fun resolvedPartQty(fixed: FixedData): Int? {
-        return pendingQty ?: quantityFromWeight(pendingWeightG, fixed.unitWeightG)
+        return ScanWorkflowRules.resolvedPartQuantity(scanState, fixed)
     }
 
     private fun addScanLog(payload: String, parsed: ParsedPayload, result: String, logMessage: String) {
-        snapshot = snapshot.copy(
-            scanLog = (
-                listOf(
-                    ScanLogEntry(
-                        payload = payload,
-                        parsedType = parsed.type?.payload.orEmpty(),
-                        parsedId = parsed.id,
-                        result = result,
-                        message = logMessage,
-                    ),
-                ) + snapshot.scanLog
-                ).take(50),
+        val entry = ScanLogEntry(
+            payload = payload,
+            parsedType = parsed.type?.payload.orEmpty(),
+            parsedId = parsed.id,
+            result = result,
+            message = logMessage,
         )
-        save()
+        snapshot = snapshot.copy(
+            scanLog = (listOf(entry) + snapshot.scanLog).take(50),
+        )
+        runCatching {
+            database.appendScanLog(entry)
+        }.onFailure {
+            message = "保存数据库失败：${it.message}"
+        }
     }
 
     private fun resolveLocation(fixed: FixedData): LocationValue {
@@ -580,14 +559,22 @@ class InventoryController(context: Context) {
                 it[normalized.id] = normalized
             },
         ).trimmed()
-        save()
+        runCatching {
+            database.upsertLocation(normalized)
+        }.onFailure {
+            message = "保存数据库失败：${it.message}"
+        }
     }
 
     private fun saveItemOnly(after: InventoryItem) {
         val items = snapshot.items.toMutableMap()
         items[after.id] = after
         snapshot = snapshot.copy(items = trimItems(items)).trimmed()
-        save()
+        runCatching {
+            database.saveItem(after, snapshot.items.keys)
+        }.onFailure {
+            message = "保存数据库失败：${it.message}"
+        }
     }
 
     private fun commitItem(action: String, before: InventoryItem?, after: InventoryItem) {
@@ -606,7 +593,11 @@ class InventoryController(context: Context) {
             transactions = (snapshot.transactions + transaction).takeLast(250),
         ).trimmed()
         lastUndo = UndoRecord(action = action, itemId = after.id, before = before, after = after)
-        save()
+        runCatching {
+            database.saveItemWithTransaction(after, transaction, snapshot.items.keys)
+        }.onFailure {
+            message = "保存数据库失败：${it.message}"
+        }
     }
 
     private fun trimItems(items: MutableMap<String, InventoryItem>): Map<String, InventoryItem> {
@@ -659,14 +650,6 @@ class InventoryController(context: Context) {
                 .takeLast(250),
             scanLog = sourceScanLog.take(50),
         )
-    }
-
-    private fun save() {
-        runCatching {
-            database.replaceAll(snapshot.trimmed())
-        }.onFailure {
-            message = "保存数据库失败：${it.message}"
-        }
     }
 
     private fun newTxId(): String = "android-${System.currentTimeMillis().toString(36)}"

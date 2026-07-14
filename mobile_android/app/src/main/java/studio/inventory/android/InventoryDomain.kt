@@ -1,6 +1,7 @@
 package studio.inventory.android
 
 import java.io.ByteArrayOutputStream
+import java.math.BigDecimal
 import java.nio.charset.StandardCharsets
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -20,6 +21,7 @@ enum class ItemType(val payload: String, val label: String) {
 }
 
 private const val PayloadPrefix = "v1"
+private val DisplayTimestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
 enum class StockStatus(val value: String, val label: String) {
     InStock("in_stock", "在库"),
@@ -199,6 +201,22 @@ data class LocationValue(
     val name: String,
 )
 
+fun filterInventoryItems(
+    items: Collection<InventoryItem>,
+    query: String,
+    typeFilter: ItemType?,
+    statusFilter: StockStatus,
+): List<InventoryItem> {
+    val text = query.trim().lowercase()
+    return items
+        .filter { item ->
+            (text.isBlank() || item.searchText.contains(text)) &&
+                (typeFilter == null || item.type == typeFilter) &&
+                item.state.status == statusFilter
+        }
+        .sortedWith(compareBy<InventoryItem> { it.state.locationId }.thenBy { it.id })
+}
+
 fun parseV1Payload(raw: String): ParsedPayload {
     val text = raw.trim()
     if (!text.lowercase().startsWith("$PayloadPrefix;")) {
@@ -364,12 +382,38 @@ fun todayCode(): String {
 
 fun nowIso(): String = OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
 
+fun displayDate(value: String?): String {
+    val text = value.orEmpty().trim()
+    if (text.length == 6 && text.all(Char::isDigit)) {
+        return "20${text.substring(0, 2)}-${text.substring(2, 4)}-${text.substring(4, 6)}"
+    }
+    return text.ifBlank { "无" }
+}
+
+fun displayTimestamp(value: String?): String {
+    val text = value.orEmpty().trim()
+    if (text.isBlank()) return "无"
+    return runCatching {
+        OffsetDateTime.parse(text).format(DisplayTimestampFormatter)
+    }.getOrDefault(text)
+}
+
+fun transactionActionLabel(action: String): String = when (action) {
+    "stock_in" -> "入库"
+    "checkout" -> "出库"
+    "stocktake" -> "更新库存"
+    "undo" -> "撤销"
+    else -> action
+}
+
 fun round1(value: Double): Double = kotlin.math.round(value * 10.0) / 10.0
 
 fun Double.gText(): String {
     val rounded = round1(this)
     return if (rounded % 1.0 == 0.0) rounded.toInt().toString() else rounded.toString()
 }
+
+fun Double.parameterText(): String = BigDecimal.valueOf(this).stripTrailingZeros().toPlainString()
 
 fun nextAutoId(type: ItemType, existingIds: Set<String>): String {
     val prefix = when (type) {

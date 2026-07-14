@@ -24,16 +24,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -129,13 +134,28 @@ fun ScanWorkspacePage(controller: InventoryController, modifier: Modifier = Modi
                 }
             }
             item {
-                FlowRow(
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Button(onClick = ::startScanner) { Text("开始扫描") }
-                    OutlinedButton(onClick = ::pauseScanner) { Text("暂停") }
-                    OutlinedButton(onClick = { torchOn = !torchOn }, enabled = analyzerRunning) {
+                    Button(
+                        onClick = { if (scannerRunning) pauseScanner() else startScanner() },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                    ) {
+                        if (!scannerRunning) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null)
+                        }
+                        Text(if (scannerRunning) "暂停相机" else "开始扫描")
+                    }
+                    OutlinedButton(
+                        onClick = { torchOn = !torchOn },
+                        enabled = analyzerRunning,
+                        modifier = Modifier
+                            .width(112.dp)
+                            .height(48.dp),
+                    ) {
                         Text(if (torchOn) "关灯" else "手电筒")
                     }
                 }
@@ -195,6 +215,10 @@ private fun ScanModeBar(controller: InventoryController) {
                 onClick = { controller.requestScanMode(mode) },
                 enabled = controller.scanReview == null,
                 label = { Text(mode.label) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
             )
         }
     }
@@ -267,69 +291,120 @@ private fun ScanSessionPanel(controller: InventoryController, modifier: Modifier
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(containerColor = Color(0xFFFFFBEB)),
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             val sorting = controller.sortingLocation
-            Text(
-                if (sorting == null) "${controller.scanMode.label}流程" else "整理库位",
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                controller.message,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            HorizontalDivider()
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (sorting == null) controller.scanMode.label else "整理库位",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    " · ${controller.message}",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             if (sorting != null) {
-                WorkflowInfoRow("目标", sorting.name)
+                Text(
+                    "目标 · ${sorting.name}",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = controller::stopLocationSorting) { Text("完成整理") }
-                    OutlinedButton(onClick = controller::clearContext) { Text("取消整理") }
+                    CompactButton(onClick = controller::stopLocationSorting, label = "完成")
+                    CompactOutlinedButton(onClick = controller::clearContext, label = "取消")
                 }
             } else {
                 val item = controller.pendingItem
-                WorkflowInfoRow("物品", item?.let { "${it.id} · ${it.displayName}" } ?: "未确认")
-                if (controller.scanMode != ScanMode.BindLocation) {
-                    when (item?.type) {
-                        ItemType.Spool -> WorkflowInfoRow(
-                            "重量",
-                            controller.pendingWeightG?.let { "${it.gText()}g" } ?: "未确认",
-                        )
-                        ItemType.Part -> {
-                            WorkflowInfoRow(
-                                "重量",
-                                controller.pendingWeightG?.let { "${it.gText()}g" } ?: "未确认",
-                            )
-                            WorkflowInfoRow("数量", controller.pendingQty?.toString() ?: "未记录")
-                        }
-                        ItemType.Other -> Unit
-                        ItemType.Location, ItemType.Weight -> Unit
-                        null -> {
-                            controller.pendingWeightG?.let { WorkflowInfoRow("重量", "${it.gText()}g") }
-                            controller.pendingQty?.let { WorkflowInfoRow("数量", it.toString()) }
-                        }
-                    }
-                }
-                if (controller.scanMode != ScanMode.Stocktake) {
-                    WorkflowInfoRow("库位", controller.pendingLocation?.name ?: "未确认")
-                }
+                Text(
+                    item?.let { "${it.id} · ${it.displayName}" } ?: "物品未确认",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    compactSessionStatus(controller),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     when (controller.scanMode) {
-                        ScanMode.StockIn -> Button(onClick = controller::stockIn, enabled = controller.canStockIn()) { Text("确认入库") }
-                        ScanMode.Stocktake -> Button(onClick = controller::stocktake, enabled = controller.canStocktake()) { Text("确认更新") }
+                        ScanMode.StockIn -> CompactButton(
+                            onClick = controller::stockIn,
+                            label = "入库",
+                            enabled = controller.canStockIn(),
+                        )
+                        ScanMode.Stocktake -> CompactButton(
+                            onClick = controller::stocktake,
+                            label = "更新",
+                            enabled = controller.canStocktake(),
+                        )
                         ScanMode.BindLocation -> {
-                            Button(onClick = controller::moveActive, enabled = controller.canMove()) { Text("确认绑定") }
-                            OutlinedButton(
+                            if (controller.pendingItem != null) {
+                                CompactButton(
+                                    onClick = controller::moveActive,
+                                    label = "绑定",
+                                    enabled = controller.canMove(),
+                                )
+                            }
+                            if (controller.pendingItem == null && controller.pendingLocation != null) {
+                                CompactOutlinedButton(
                                 onClick = controller::startLocationSorting,
-                                enabled = controller.pendingLocation != null,
-                            ) { Text("整理该库位") }
+                                    label = "整理库位",
+                                )
+                            }
                         }
                     }
-                    OutlinedButton(onClick = controller::clearContext) { Text("取消流程") }
+                    CompactOutlinedButton(onClick = controller::clearContext, label = "取消")
                 }
             }
         }
     }
+}
+
+private fun compactSessionStatus(controller: InventoryController): String {
+    val values = mutableListOf<String>()
+    val item = controller.pendingItem
+    if (controller.scanMode != ScanMode.BindLocation) {
+        when (item?.type) {
+            ItemType.Spool -> values += "重量 ${controller.pendingWeightG?.let { "${it.gText()}g" } ?: "未确认"}"
+            ItemType.Part -> {
+                values += "重量 ${controller.pendingWeightG?.let { "${it.gText()}g" } ?: "未确认"}"
+                values += "数量 ${controller.pendingQty ?: "未记录"}"
+            }
+            ItemType.Other -> Unit
+            ItemType.Location, ItemType.Weight -> Unit
+            null -> controller.pendingWeightG?.let { values += "重量 ${it.gText()}g" }
+        }
+    }
+    if (controller.scanMode != ScanMode.Stocktake) {
+        values += "库位 ${controller.pendingLocation?.name ?: "未确认"}"
+    }
+    return values.ifEmpty { listOf("继续扫码补齐当前流程") }.joinToString(" · ")
+}
+
+@Composable
+private fun CompactButton(onClick: () -> Unit, label: String, enabled: Boolean = true) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.height(40.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+    ) { Text(label) }
+}
+
+@Composable
+private fun CompactOutlinedButton(onClick: () -> Unit, label: String, enabled: Boolean = true) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.height(40.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+    ) { Text(label) }
 }
 
 @Composable
@@ -351,9 +426,10 @@ private fun ItemReviewContent(controller: InventoryController, review: ScanRevie
     var brand by remember(review) { mutableStateOf(scanned.brand) }
     var material by remember(review) { mutableStateOf(scanned.material) }
     var color by remember(review) { mutableStateOf(scanned.color) }
-    var tare by remember(review) { mutableStateOf(scanned.tareG?.gText().orEmpty()) }
-    var unitWeight by remember(review) { mutableStateOf(scanned.unitWeightG?.gText().orEmpty()) }
+    var tare by remember(review) { mutableStateOf(scanned.tareG?.parameterText().orEmpty()) }
+    var unitWeight by remember(review) { mutableStateOf(scanned.unitWeightG?.parameterText().orEmpty()) }
     var note by remember(review) { mutableStateOf(scanned.note) }
+    var editing by remember(review) { mutableStateOf(scanned.missingRequiredFields().isNotEmpty()) }
 
     val edited = scanned.copy(
         name = name.trim(),
@@ -366,10 +442,7 @@ private fun ItemReviewContent(controller: InventoryController, review: ScanRevie
     )
     val missing = edited.missingRequiredFields()
     val localStatus = review.local?.state?.status
-    val modeAllowsItem = when (controller.scanMode) {
-        ScanMode.StockIn -> localStatus != StockStatus.InStock && localStatus != StockStatus.Archived
-        ScanMode.Stocktake, ScanMode.BindLocation -> review.local?.state?.status == StockStatus.InStock
-    }
+    val modeAllowsItem = ScanWorkflowRules.allowsItem(controller.scanMode, localStatus)
 
     ReviewColumn {
         Text("确认物品", style = MaterialTheme.typography.titleLarge)
@@ -391,24 +464,29 @@ private fun ItemReviewContent(controller: InventoryController, review: ScanRevie
         }
         if (review.hasFixedConflict) {
             Text("本地固定信息与标签不同。", color = MaterialTheme.colorScheme.error)
-            Text("本地：${review.local?.fixed?.displayName}")
-            Text("扫码：${scanned.displayName}")
+            Text("本地：${review.local?.fixed?.compactDescription()}")
+            Text("扫码：${scanned.compactDescription()}")
         }
-        when (scanned.type) {
-            ItemType.Spool -> {
-                ReviewTextField("品牌", brand, { brand = it })
-                ReviewTextField("材料", material, { material = it })
-                ReviewTextField("颜色", color, { color = it })
-                ReviewNumberField("空盘重量 g", tare, { tare = it })
+        if (editing) {
+            when (scanned.type) {
+                ItemType.Spool -> {
+                    ReviewTextField("品牌", brand, { brand = it })
+                    ReviewTextField("材料", material, { material = it })
+                    ReviewTextField("颜色", color, { color = it })
+                    ReviewNumberField("空盘重量 g", tare, { tare = it })
+                }
+                ItemType.Part -> {
+                    ReviewTextField("名称", name, { name = it })
+                    ReviewNumberField("单件重量 g", unitWeight, { unitWeight = it })
+                }
+                ItemType.Other -> ReviewTextField("名称", name, { name = it })
+                ItemType.Location, ItemType.Weight -> Unit
             }
-            ItemType.Part -> {
-                ReviewTextField("名称", name, { name = it })
-                ReviewNumberField("单件重量 g", unitWeight, { unitWeight = it })
-            }
-            ItemType.Other -> ReviewTextField("名称", name, { name = it })
-            ItemType.Location, ItemType.Weight -> Unit
+            ReviewTextField("备注", note, { note = it })
+        } else {
+            FixedReviewSummary(edited)
+            TextButton(onClick = { editing = true }) { Text("编辑信息") }
         }
-        ReviewTextField("备注", note, { note = it })
         if (missing.isNotEmpty()) {
             Text("还缺：${missing.joinToString()}", color = MaterialTheme.colorScheme.error)
         }
@@ -416,7 +494,7 @@ private fun ItemReviewContent(controller: InventoryController, review: ScanRevie
             Button(
                 onClick = { controller.confirmItemReview(edited) },
                 enabled = missing.isEmpty() && modeAllowsItem,
-            ) { Text("确认扫码信息") }
+            ) { Text("确认") }
             if (review.hasFixedConflict) {
                 OutlinedButton(
                     onClick = { controller.confirmItemReview(edited, keepLocal = true) },
@@ -425,9 +503,46 @@ private fun ItemReviewContent(controller: InventoryController, review: ScanRevie
                     Text("使用本地信息")
                 }
             }
-            OutlinedButton(onClick = controller::cancelScanReview) { Text("取消本次扫码") }
+            OutlinedButton(onClick = controller::cancelScanReview) { Text("取消") }
         }
     }
+}
+
+@Composable
+private fun FixedReviewSummary(fixed: FixedData) {
+    when (fixed.type) {
+        ItemType.Spool -> {
+            Text(fixed.displayName, style = MaterialTheme.typography.titleMedium)
+            Text(
+                "空盘 ${fixed.tareG?.let { "${it.parameterText()}g" } ?: "未记录"}",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        ItemType.Part -> {
+            Text(fixed.displayName, style = MaterialTheme.typography.titleMedium)
+            Text(
+                "单重 ${fixed.unitWeightG?.let { "${it.parameterText()}g" } ?: "未记录"}",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        ItemType.Other -> Text(fixed.displayName, style = MaterialTheme.typography.titleMedium)
+        ItemType.Location, ItemType.Weight -> Unit
+    }
+    if (fixed.note.isNotBlank()) {
+        Text(
+            fixed.note,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+private fun FixedData.compactDescription(): String = when (type) {
+    ItemType.Spool -> "$displayName · 空盘 ${tareG?.let { "${it.parameterText()}g" } ?: "未记录"}"
+    ItemType.Part -> "$displayName · 单重 ${unitWeightG?.let { "${it.parameterText()}g" } ?: "未记录"}"
+    ItemType.Other, ItemType.Location, ItemType.Weight -> displayName
 }
 
 @Composable
@@ -446,14 +561,14 @@ private fun WeightReviewContent(controller: InventoryController, review: ScanRev
         }
         when (fixed?.type) {
             ItemType.Spool -> {
-                WorkflowInfoRow("空盘", fixed.tareG?.let { "${it.gText()}g" } ?: "未记录")
+                WorkflowInfoRow("空盘", fixed.tareG?.let { "${it.parameterText()}g" } ?: "未记录")
                 WorkflowInfoRow(
                     "可用",
                     fixed.tareG?.let { "${round1(review.valueG - it).gText()}g" } ?: "无法计算",
                 )
             }
             ItemType.Part -> {
-                WorkflowInfoRow("单重", fixed.unitWeightG?.let { "${it.gText()}g" } ?: "未记录")
+                WorkflowInfoRow("单重", fixed.unitWeightG?.let { "${it.parameterText()}g" } ?: "未记录")
                 WorkflowInfoRow("估算", quantityFromWeight(review.valueG, fixed.unitWeightG)?.let { "$it 件" } ?: "无法计算")
             }
             else -> Unit
@@ -462,8 +577,8 @@ private fun WeightReviewContent(controller: InventoryController, review: ScanRev
             Text("当前物品参数不足或重量无效，请取消后先确认物品信息。", color = MaterialTheme.colorScheme.error)
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = controller::confirmWeightReview, enabled = valid) { Text("确认重量") }
-            OutlinedButton(onClick = controller::cancelScanReview) { Text("取消本次扫码") }
+            Button(onClick = controller::confirmWeightReview, enabled = valid) { Text("确认") }
+            OutlinedButton(onClick = controller::cancelScanReview) { Text("取消") }
         }
     }
 }
@@ -480,9 +595,9 @@ private fun LocationReviewContent(controller: InventoryController, review: ScanR
         ReviewTextField("库位名称", name, { name = it })
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { controller.confirmLocationReview(name) }, enabled = name.isNotBlank()) {
-                Text("确认库位")
+                Text("确认")
             }
-            OutlinedButton(onClick = controller::cancelScanReview) { Text("取消本次扫码") }
+            OutlinedButton(onClick = controller::cancelScanReview) { Text("取消") }
         }
     }
 }

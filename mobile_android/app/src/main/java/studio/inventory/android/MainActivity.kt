@@ -7,6 +7,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -58,10 +64,32 @@ private fun StudioInventoryTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = androidx.compose.material3.lightColorScheme(
             primary = Color(0xFF0F766E),
+            onPrimary = Color.White,
+            primaryContainer = Color(0xFFCCFBF1),
+            onPrimaryContainer = Color(0xFF134E4A),
             secondary = Color(0xFF475569),
+            onSecondary = Color.White,
+            secondaryContainer = Color(0xFFE2E8F0),
+            onSecondaryContainer = Color(0xFF1E293B),
             tertiary = Color(0xFFB45309),
+            onTertiary = Color.White,
+            tertiaryContainer = Color(0xFFFEF3C7),
+            onTertiaryContainer = Color(0xFF78350F),
             surface = Color(0xFFFFFFFF),
-            background = Color(0xFFF7F8FA),
+            onSurface = Color(0xFF111827),
+            surfaceVariant = Color(0xFFF1F5F9),
+            onSurfaceVariant = Color(0xFF475569),
+            surfaceBright = Color.White,
+            surfaceDim = Color(0xFFE2E8F0),
+            surfaceContainer = Color(0xFFF8FAFC),
+            surfaceContainerHigh = Color(0xFFF1F5F9),
+            surfaceContainerHighest = Color(0xFFE2E8F0),
+            surfaceContainerLow = Color.White,
+            surfaceContainerLowest = Color.White,
+            background = Color(0xFFF8FAFC),
+            onBackground = Color(0xFF111827),
+            outline = Color(0xFF94A3B8),
+            outlineVariant = Color(0xFFCBD5E1),
         ),
         content = {
             Surface(color = MaterialTheme.colorScheme.background) {
@@ -75,7 +103,14 @@ private fun StudioInventoryTheme(content: @Composable () -> Unit) {
 fun StudioInventoryApp(controller: InventoryController, printer: LabelPrinterController) {
     var page by remember { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val titles = listOf("扫码", "库存", "新增", "流水")
+    val destinations = listOf(
+        "扫码" to Icons.Default.Search,
+        "库存" to Icons.Default.Home,
+        "新增" to Icons.Default.AddCircle,
+        "流水" to Icons.AutoMirrored.Filled.List,
+    )
+
+    DebugScanBridge(controller)
 
     Scaffold(
         topBar = {
@@ -91,12 +126,15 @@ fun StudioInventoryApp(controller: InventoryController, printer: LabelPrinterCon
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            NavigationBar {
-                titles.forEachIndexed { index, title ->
+            NavigationBar(
+                modifier = Modifier.height(64.dp),
+                containerColor = MaterialTheme.colorScheme.surface,
+            ) {
+                destinations.forEachIndexed { index, (title, icon) ->
                     NavigationBarItem(
                         selected = page == index,
                         onClick = { page = index },
-                        icon = { Text(title.take(1)) },
+                        icon = { Icon(icon, contentDescription = title) },
                         label = { Text(title) },
                     )
                 }

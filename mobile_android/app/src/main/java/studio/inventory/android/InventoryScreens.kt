@@ -44,6 +44,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,6 +62,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -74,14 +76,12 @@ fun InventoryPage(controller: InventoryController, modifier: Modifier = Modifier
     var statusFilter by remember { mutableStateOf(StockStatus.InStock) }
     var selectedItem by remember { mutableStateOf<InventoryItem?>(null) }
 
-    val entries = controller.snapshot.items.values
-        .filter { item ->
-            val text = query.trim().lowercase()
-            (text.isBlank() || item.searchText.contains(text)) &&
-                (typeFilter == null || item.type == typeFilter) &&
-                item.state.status == statusFilter
-        }
-        .sortedWith(compareBy<InventoryItem> { it.state.locationId }.thenBy { it.id })
+    val entries = filterInventoryItems(
+        items = controller.snapshot.items.values,
+        query = query,
+        typeFilter = typeFilter,
+        statusFilter = statusFilter,
+    )
 
     LazyColumn(
         modifier = modifier
@@ -124,7 +124,7 @@ fun InventoryPage(controller: InventoryController, modifier: Modifier = Modifier
             ListCard(
                 title = "${item.id} · ${item.fixed.displayName}",
                 subtitle = "${item.type.label} · ${item.stockText} · 库位 ${item.locationText}",
-                footer = item.fixed.searchText,
+                footer = item.fixed.note,
                 onClick = { selectedItem = item },
             )
         }
@@ -166,11 +166,11 @@ private fun InventoryDetailSheet(controller: InventoryController, item: Inventor
                     InfoRow("材料", item.fixed.material.ifBlank { "未记录" })
                     InfoRow("颜色", item.fixed.color.ifBlank { "未记录" })
                     InfoRow("毛重", item.state.currentG?.let { "${it.gText()}g" } ?: "未称重")
-                    InfoRow("空盘", item.fixed.tareG?.let { "${it.gText()}g" } ?: "未记录")
+                    InfoRow("空盘", item.fixed.tareG?.let { "${it.parameterText()}g" } ?: "未记录")
                     InfoRow("可用", item.usableG?.let { "${it.gText()}g" } ?: "未计算")
                 }
                 ItemType.Part -> {
-                    InfoRow("单重", item.fixed.unitWeightG?.let { "${it.gText()}g" } ?: "未记录")
+                    InfoRow("单重", item.fixed.unitWeightG?.let { "${it.parameterText()}g" } ?: "未记录")
                     InfoRow("总重", item.state.currentG?.let { "${it.gText()}g" } ?: "未称重")
                     InfoRow("数量", item.state.currentQty?.toString() ?: "未记录")
                 }
@@ -181,14 +181,14 @@ private fun InventoryDetailSheet(controller: InventoryController, item: Inventor
                 InfoRow("备注", item.fixed.note)
             }
             HorizontalDivider()
-            InfoRow("入库", item.state.stockedOn)
-            InfoRow("出库", item.state.checkedOutOn ?: "无")
-            InfoRow("更新", item.state.updatedAt)
+            InfoRow("入库", displayDate(item.state.stockedOn))
+            InfoRow("出库", displayDate(item.state.checkedOutOn))
+            InfoRow("更新", displayTimestamp(item.state.updatedAt))
             if (recentTransactions.isNotEmpty()) {
                 HorizontalDivider()
                 Text("最近流水", style = MaterialTheme.typography.titleMedium)
                 recentTransactions.forEach { tx ->
-                    InfoRow(tx.action, tx.createdAt)
+                    InfoRow(transactionActionLabel(tx.action), displayTimestamp(tx.createdAt))
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -449,6 +449,7 @@ fun AddLabelPage(
 @Composable
 fun TransactionsPage(controller: InventoryController, modifier: Modifier = Modifier) {
     val transactions = controller.snapshot.transactions.asReversed()
+    val uriHandler = LocalUriHandler.current
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -456,17 +457,28 @@ fun TransactionsPage(controller: InventoryController, modifier: Modifier = Modif
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
-            Text("最近流水 ${transactions.size}", style = MaterialTheme.typography.titleLarge)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("最近流水 ${transactions.size}", style = MaterialTheme.typography.titleLarge)
+                Text("版本 ${BuildConfig.VERSION_NAME}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(
+                    onClick = { uriHandler.openUri(RepositoryUrl) },
+                    contentPadding = PaddingValues(0.dp),
+                ) {
+                    Text("github.com/llleeeqi/maker-studio-inventory")
+                }
+            }
         }
         items(transactions) { tx ->
             ListCard(
-                title = "${tx.action} · ${tx.itemId}",
-                subtitle = "${tx.itemType.label} · ${tx.createdAt}",
+                title = "${transactionActionLabel(tx.action)} · ${tx.itemId}",
+                subtitle = "${tx.itemType.label} · ${displayTimestamp(tx.createdAt)}",
                 footer = "tx=${tx.txId}",
             )
         }
     }
 }
+
+private const val RepositoryUrl = "https://github.com/llleeeqi/maker-studio-inventory"
 
 @Composable
 private fun InfoRow(label: String, value: String) {
