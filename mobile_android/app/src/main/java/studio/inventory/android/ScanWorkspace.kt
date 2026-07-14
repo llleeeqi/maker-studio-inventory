@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -58,9 +61,16 @@ fun ScanWorkspacePage(controller: InventoryController, modifier: Modifier = Modi
     var torchOn by remember { mutableStateOf(false) }
     var lastScannerActivityAt by remember { mutableLongStateOf(0L) }
     var showHistory by remember { mutableStateOf(false) }
+    var sessionPanelHeightPx by remember { mutableIntStateOf(0) }
     val review = controller.scanReview
     val sessionActive = controller.scanState.hasSession
     val analyzerRunning = scannerRunning && review == null
+    val density = LocalDensity.current
+    val sessionBottomPadding = if (sessionActive) {
+        with(density) { sessionPanelHeightPx.toDp() + 16.dp }
+    } else {
+        12.dp
+    }
 
     fun startScanner() {
         lastScannerActivityAt = System.currentTimeMillis()
@@ -87,7 +97,7 @@ fun ScanWorkspacePage(controller: InventoryController, modifier: Modifier = Modi
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 12.dp),
-            contentPadding = PaddingValues(bottom = if (sessionActive) 230.dp else 12.dp),
+            contentPadding = PaddingValues(bottom = sessionBottomPadding),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item { ScanModeBar(controller) }
@@ -162,6 +172,7 @@ fun ScanWorkspacePage(controller: InventoryController, modifier: Modifier = Modi
                 controller = controller,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .onSizeChanged { sessionPanelHeightPx = it.height }
                     .padding(horizontal = 12.dp, vertical = 8.dp),
             )
         }
