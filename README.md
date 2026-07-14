@@ -21,6 +21,8 @@ Kotlin + Jetpack Compose + CameraX + ML Kit
 
 当前 0.4.0 测试 APK 已使用 Android SQLite 四表；旧 JSON snapshot 只作为自动迁移源。
 
+下载：[GitHub Release v0.4.0](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.0)
+
 旧 Web/Capacitor、Flutter 手机实现和早期 JS 检测版已清理。当前仓库只保留原生 Android 主线、虚拟货架测试台、文档和最新测试 APK。
 
 ## 当前决策

@@ -42,6 +42,8 @@ studio-inventory-native-0.4.0-debug.apk
 
 当前没有 Android 设备，0.4.0 已构建但尚未完成真机验收。逐项测试步骤见 `MANUAL_TEST_MATRIX.md`。
 
+下载：[GitHub Release v0.4.0](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.0)
+
 ## 0.4.0 变更表
 
 | 范围 | 新行为 | 验证 |

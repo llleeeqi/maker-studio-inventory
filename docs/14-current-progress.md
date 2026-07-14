@@ -14,7 +14,7 @@ mobile_android/
 
 ```text
 studio-inventory-native-0.4.0-debug.apk
-GitHub tag: v0.4.0
+GitHub Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.0
 ```
 
 线上虚拟货架:

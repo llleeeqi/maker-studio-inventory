@@ -5,7 +5,7 @@
 ```text
 当前可测版: v0.4.0
 APK: studio-inventory-native-0.4.0-debug.apk
-Tag: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.0
+Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.0
 ```
 
 ## 工作流
