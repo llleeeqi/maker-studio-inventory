@@ -322,7 +322,7 @@ private fun ItemReviewContent(controller: InventoryController, review: ScanRevie
     val missing = edited.missingRequiredFields()
     val modeAllowsItem = when (controller.scanMode) {
         ScanMode.StockIn -> review.local?.state?.status != StockStatus.InStock
-        ScanMode.Stocktake, ScanMode.BindLocation -> review.local != null
+        ScanMode.Stocktake, ScanMode.BindLocation -> review.local?.state?.status == StockStatus.InStock
     }
 
     ReviewColumn {
@@ -336,7 +336,7 @@ private fun ItemReviewContent(controller: InventoryController, review: ScanRevie
                 if (controller.scanMode == ScanMode.StockIn) {
                     "该物品已经在库，请切换到更新库存或绑定库位。"
                 } else {
-                    "该物品还没有入库，不能执行${controller.scanMode.label}。"
+                    "只有在库物品可以执行${controller.scanMode.label}。"
                 },
                 color = MaterialTheme.colorScheme.error,
             )
@@ -370,7 +370,10 @@ private fun ItemReviewContent(controller: InventoryController, review: ScanRevie
                 enabled = missing.isEmpty() && modeAllowsItem,
             ) { Text("确认扫码信息") }
             if (review.hasFixedConflict) {
-                OutlinedButton(onClick = { controller.confirmItemReview(edited, keepLocal = true) }) {
+                OutlinedButton(
+                    onClick = { controller.confirmItemReview(edited, keepLocal = true) },
+                    enabled = modeAllowsItem,
+                ) {
                     Text("使用本地信息")
                 }
             }

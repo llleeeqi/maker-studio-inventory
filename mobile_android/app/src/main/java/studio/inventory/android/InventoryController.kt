@@ -133,6 +133,11 @@ class InventoryController(context: Context) {
     }
 
     private fun prepareWeightReview(raw: String, parsed: ParsedPayload) {
+        if (scanMode == ScanMode.BindLocation) {
+            addScanLog(raw, parsed, "ignored", "绑定库位模式不需要重量")
+            message = "绑定库位模式不需要重量码。"
+            return
+        }
         val value = parsed.weightG
         if (value == null || value <= 0.0) {
             addScanLog(raw, parsed, "rejected", "重量码缺少有效 value_g。")
@@ -151,6 +156,11 @@ class InventoryController(context: Context) {
     }
 
     private fun prepareLocationReview(raw: String, parsed: ParsedPayload) {
+        if (scanMode == ScanMode.Stocktake) {
+            addScanLog(raw, parsed, "ignored", "更新库存模式不需要库位")
+            message = "更新库存模式不需要库位码。"
+            return
+        }
         val fixed = parsed.fixed
         if (fixed == null || fixed.id.isBlank()) {
             addScanLog(raw, parsed, "rejected", "库位码缺少 id。")
@@ -220,8 +230,8 @@ class InventoryController(context: Context) {
 
     fun confirmItemReview(edited: FixedData, keepLocal: Boolean = false) {
         val review = scanReview as? ScanReview.Item ?: return
-        if (scanMode != ScanMode.StockIn && review.local == null) {
-            message = "该物品还没有入库，不能执行${scanMode.label}。"
+        if (scanMode != ScanMode.StockIn && review.local?.state?.status != StockStatus.InStock) {
+            message = "只有在库物品可以执行${scanMode.label}。"
             return
         }
         if (scanMode == ScanMode.StockIn && review.local?.state?.status == StockStatus.InStock) {
@@ -241,7 +251,7 @@ class InventoryController(context: Context) {
         }
 
         val replacing = pendingItem != null && pendingItem?.id != selected.id
-        val retainedWeight = if (replacing) null else pendingWeightG
+        val retainedWeight = if (replacing || selected.type == ItemType.Other) null else pendingWeightG
         val quantity = if (selected.type == ItemType.Part) {
             quantityFromWeight(retainedWeight, selected.unitWeightG)
         } else {
