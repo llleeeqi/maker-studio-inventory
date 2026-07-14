@@ -2,8 +2,6 @@
 
 面向中文用户的个人工作室库存管理项目。适合 3D 打印、模型制作、电子维修、五金收纳、耗材盘点和小型创客空间。
 
-English documentation is available as a secondary reference: [README.en.md](./README.en.md)
-
 ## 项目定位
 
 这是一个 **扫码驱动的个人工作室库存管理 App**。
@@ -21,9 +19,9 @@ mobile_android/
 Kotlin + Jetpack Compose + CameraX + ML Kit
 ```
 
-当前 0.3.8 测试 APK 已使用 Android SQLite 四表；旧 JSON snapshot 只作为自动迁移源。
+当前 0.4.0 测试 APK 已使用 Android SQLite 四表；旧 JSON snapshot 只作为自动迁移源。
 
-旧 Web/Capacitor 和 Flutter 手机实现只作为历史参考，不再作为继续开发方向。
+旧 Web/Capacitor、Flutter 手机实现和早期 JS 检测版已清理。当前仓库只保留原生 Android 主线、虚拟货架测试台、文档和最新测试 APK。
 
 ## 当前决策
 
@@ -44,8 +42,23 @@ compileSdk = 36
 - 扫物品码只展示固定信息，不自动写库存。
 - 入库必须补齐物品、重量/数量和库位，并点击确认。
 - 库位整理模式允许进入后连续扫码自动更新库位。
-- 0.3.7 已起 SQLite 数据库，使用 `items / locations / transactions / scan_logs` 四张表。
-- 0.3.8 已重做扫码页分层 UI，并增加库存点击详情。
+- SQLite 数据库使用 `items / locations / transactions / scan_logs` 四张表。
+- 0.4.0 已重写扫码会话、扫码后确认、模式切换和底部当前流程浮层。
+- 0.4.0 库存列表支持点击详情，并提供二次确认的出库和归档。
+
+## 0.4.0 改动
+
+| 范围 | 原问题 | 0.4.0 行为 | 状态 |
+|---|---|---|---|
+| 扫码状态 | 物品、重量、库位和冲突状态分散，容易互相覆盖 | 统一为一个 `ScanWorkflowState`，一个流程只保留一套当前上下文 | 已构建 |
+| 扫码确认 | 扫码结果塞在页面里，等待和确认不清晰 | 识别后暂停相机分析，在 App 内底部确认层确认或取消 | 已构建，待真机 |
+| 当前流程 | 提醒区容易挤压、覆盖页面 | 当前流程浮在底部导航上方，并按模式和物品类型只显示必要字段 | 已构建，待真机 |
+| 模式切换 | 未完成流程可能被直接丢失 | 切换入库、更新库存、绑定库位前确认是否清空 | 已构建 |
+| 库位整理 | 连续扫码可能重复写同一物品 | 已在目标库位的物品直接跳过，不重复更新时间和成功日志 | 已构建 |
+| 库存详情 | 列表不能展开查看关键变量 | 点击查看耗材重量、零件数量、库位、时间和最近流水 | 已构建，待真机 |
+| 低频动作 | 出库和归档入口不明确 | 从库存详情发起，并再次确认 | 已构建，待真机 |
+| 归档边界 | 归档标签仍可能重新进入扫码流程 | 归档物品拒绝入库、盘点、绑定和整理库位 | 已构建 |
+| 相机资源 | 离开扫码页后分析线程和扫描器可能残留 | 页面销毁时释放 CameraX 分析线程和 ML Kit 扫描器 | 已构建，待真机 |
 
 ## 二维码协议
 
@@ -79,14 +92,10 @@ v1;type=weight;value_g=712.4
 
 | 路径 | 作用 |
 |---|---|
-| `mobile_android/` | 新原生 Android 主线，已创建 |
+| `mobile_android/` | 原生 Android 主线 |
 | `tools/` | 虚拟货架测试台 |
-| `core/` | 早期 Web 检测版 JS 核心，保留作参考 |
-| `app/` | 早期 Web 检测版 UI，保留作参考 |
-| `android/` | 早期 Android Web 壳工程，历史目录 |
-| `mobile_flutter/` | Flutter 0.2.x 历史实现，保留作参考 |
-| `tests/` | 早期 JS 核心测试 |
 | `docs/` | 当前设计和后续开发记录 |
+| `studio-inventory-native-0.4.0-debug.apk` | 当前保留的最新测试 APK |
 
 虚拟货架测试台：
 
@@ -106,14 +115,16 @@ v1;type=weight;value_g=712.4
 - [docs/04-next-steps.md](./docs/04-next-steps.md)：下一阶段开发清单。
 - [docs/14-current-progress.md](./docs/14-current-progress.md)：当前实测进度和上下文恢复入口。
 - [docs/15-release-workflow-and-project-management.md](./docs/15-release-workflow-and-project-management.md)：发版流程、版本记录和项目队列。
+- [mobile_android/INTERACTION_REWRITE.md](./mobile_android/INTERACTION_REWRITE.md)：0.4.0 交互重写边界。
+- [mobile_android/MANUAL_TEST_MATRIX.md](./mobile_android/MANUAL_TEST_MATRIX.md)：0.4.0 真机验收表。
 
 ## 后续方向
 
 近期：
 
-1. 梳理并确认手机 App 页面按钮、可点击条件和点击后流程。
-2. 按确认后的操作逻辑调整扫码页、库存页、新增页和流水页。
-3. 补扫码后 App 内确认弹窗的可编辑字段。
+1. 按 `mobile_android/MANUAL_TEST_MATRIX.md` 完成 0.4.0 真机验收。
+2. 根据真机截图修复小屏、大字体、软键盘下的重叠和遮挡。
+3. 标签机到手后验证 40x30mm 实际打印和二维码可扫性。
 4. 补导出/导入能力。
 
 中期：

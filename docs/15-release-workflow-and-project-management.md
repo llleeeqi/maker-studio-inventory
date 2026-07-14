@@ -3,9 +3,9 @@
 ## 当前版本
 
 ```text
-当前可测版: v0.3.8
-APK: studio-inventory-native-0.3.8-debug.apk
-Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.3.8
+当前可测版: v0.4.0
+APK: studio-inventory-native-0.4.0-debug.apk
+Tag: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.4.0
 ```
 
 ## 工作流
@@ -38,6 +38,34 @@ GitHub Release 可打开
 ```
 
 ## 版本记录
+
+### v0.4.0
+
+扫码交互层重写版本。
+
+已完成：
+
+```text
+单一 ScanWorkflowState 管理扫码会话
+物品、重量和库位扫码后进入底部确认层
+确认期间暂停相机分析，确认或取消后恢复
+未完成流程切换模式时确认清空
+当前流程浮在底部导航上方，并按模式精简字段
+库存详情展示关键变量、时间和最近流水
+详情内二次确认出库或归档
+归档物品拒绝重新进入扫码流程
+库位整理重复扫已在目标库位的物品时跳过
+离开扫码页释放扫描器和分析线程
+```
+
+验证状态：
+
+```text
+./gradlew assembleDebug 通过
+APK 版本 0.4.0 (40)
+SHA256: 8dcd6029f5705ad7fff6539497ba9df18ae669ced5354b752744df3b94f85d97
+真机视觉、相机暂停恢复和软键盘布局待验
+```
 
 ### v0.3.8
 
@@ -92,19 +120,19 @@ tools 虚拟货架耗材/重量/库位扫码链路可用
 
 ## 当前项目队列
 
-### P0: 先修现场使用阻塞
+### P0: 完成 0.4.0 真机验收
 
 ```text
-真机验证 v0.3.8 UI 分层
-修复仍然存在的重叠、遮挡、文字溢出
-把物品码、重量码、库位码确认从页面内容彻底收敛到强提醒浮层或底部弹层
-补齐确认弹窗里的可编辑字段: tare_g / unit_weight_g / location name / note
+按 mobile_android/MANUAL_TEST_MATRIX.md 逐项测试
+验证相机启动、扫码后暂停、确认/取消后恢复
+验证小屏、大字体、软键盘下没有重叠和遮挡
+验证底部当前流程不遮挡底部导航
+验证库存详情、出库和归档确认
 ```
 
 ### P1: 完整日常闭环
 
 ```text
-库存详情页补低频动作入口: 出库、归档、查看最近流水
 增加导出/导入入口
 打印机到货后验证 40x30mm 纸面效果
 根据纸面效果决定是否调整标签到 50x40 或 60x40
