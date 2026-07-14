@@ -230,6 +230,10 @@ class InventoryController(context: Context) {
 
     fun confirmItemReview(edited: FixedData, keepLocal: Boolean = false) {
         val review = scanReview as? ScanReview.Item ?: return
+        if (review.local?.state?.status == StockStatus.Archived) {
+            message = "该物品已归档，不能继续扫码操作。"
+            return
+        }
         if (scanMode != ScanMode.StockIn && review.local?.state?.status != StockStatus.InStock) {
             message = "只有在库物品可以执行${scanMode.label}。"
             return
@@ -319,7 +323,8 @@ class InventoryController(context: Context) {
         val fixed = pendingItem ?: return false
         val location = pendingLocation ?: return false
         if (location.id.isBlank()) return false
-        if (snapshot.items[fixed.id]?.state?.status == StockStatus.InStock) return false
+        val existingStatus = snapshot.items[fixed.id]?.state?.status
+        if (existingStatus == StockStatus.InStock || existingStatus == StockStatus.Archived) return false
         return when (fixed.type) {
             ItemType.Spool -> {
                 val current = pendingWeightG

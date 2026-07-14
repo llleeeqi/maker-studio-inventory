@@ -40,6 +40,8 @@ app/build/outputs/apk/debug/app-debug.apk
 studio-inventory-native-0.4.0-debug.apk
 ```
 
+当前没有 Android 设备，0.4.0 已构建但尚未完成真机验收。逐项测试步骤见 `MANUAL_TEST_MATRIX.md`。
+
 ## 当前功能
 
 - 四个入口：扫码 / 库存 / 新增 / 流水。
