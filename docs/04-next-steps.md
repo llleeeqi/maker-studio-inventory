@@ -9,7 +9,17 @@
 - 开发可独立使用的 Web 客户端，不只提供只读库存查看。
 - Web 客户端拥有自己的本地数据、设备身份和同步状态，通过现有 WebDAV 仓库与 Android 客户端双向同步。
 - Web 客户端需要兼容现有云端加密对象、索引、冲突和备份格式，不另建中心库存服务端。
-- 评估通过 WebUSB 或厂商提供的浏览器接口连接 USB 标签机，使电脑端也能生成和打印标签。
+- Web 客户端优先按 PWA 实现，使电脑和 iOS 都能安装到桌面或主屏幕，减少原生 iOS App 的审核和发布成本。
+- iOS PWA 优先验证摄像头扫码、离线本地数据和 WebDAV 同步；摄像头使用 `getUserMedia`，必须在实体 iPhone 上验证生命周期和系统版本差异。
+- 电脑端评估通过 WebUSB 或德佟 PC Web 接口连接 USB 标签机。
+- iOS WebKit 当前不提供 Web Bluetooth 和 WebUSB，iOS PWA 直连标签机暂不承诺；后续结合德佟接口和实体设备单独验证可行性。
+
+相关官方资料：
+
+- [WebKit：iOS/iPadOS 主屏幕 Web App](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/)
+- [WebKit：摄像头 getUserMedia](https://webkit.org/blog/7763/a-closer-look-into-webrtc/)
+- [WebKit：暂不实现 Web Bluetooth 和 WebUSB](https://webkit.org/tracking-prevention/)
+- [德佟 SDK 下载页](https://en.detonger.com/)
 - 增加待打印标签清单：可以先生成并保存准备打印的标签，等物品、打印机或标签纸到位后集中打印。
 - 待打印标签不算库存建档，不影响库存数量和库位；实际物品仍需扫码并完成入库后才写入库存。
 - 接入能够显示或输出二维码的电子秤，继续保留手动录入重量作为备用方式。
