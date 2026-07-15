@@ -18,3 +18,4 @@
 | [14-current-progress.md](./14-current-progress.md) | 当前实测进度、暂缓事项和上下文恢复入口 |
 | [15-release-workflow-and-project-management.md](./15-release-workflow-and-project-management.md) | 发版流程、版本记录和项目队列 |
 | [16-webdav-sync-v1.md](./16-webdav-sync-v1.md) | 0.5.0 本地优先 WebDAV 同步、冲突、加密和备份恢复协议 |
+| [17-android-build-and-device-support.md](./17-android-build-and-device-support.md) | Android 构建参数、APK 输出、标签打印机兼容边界和设备验收 |

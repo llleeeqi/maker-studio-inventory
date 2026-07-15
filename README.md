@@ -1,212 +1,58 @@
 # 个人工作室耗材与五金库存管理
 
-面向中文用户的个人工作室库存管理项目。适合 3D 打印、模型制作、电子维修、五金收纳、耗材盘点和小型创客空间。
+一个面向个人工作室和小型创客空间的 Android 库存管理 App，适合管理 3D 打印耗材、螺丝和电子零件、工具及其他带标签物品。
 
-## 项目定位
+项目以扫码为主要输入方式：先生成并打印物品标签，实际使用时扫码补充重量、数量和库位，再确认写入本地库存。
 
-这是一个 **扫码驱动的个人工作室库存管理 App**。
+## 主要功能
 
-核心目标：
+- 扫码入库、更新重量或数量、绑定和整理库位。
+- 管理耗材空盘重量、当前毛重和可用重量。
+- 管理零件单重、总重和估算数量。
+- 按物品或库位查看库存，并支持中文、拼音和模糊搜索。
+- SQLite 本地存储，日常操作不依赖网络。
+- 可选 WebDAV 多设备同步、冲突处理和全量备份恢复。
+- 生成 40 x 30 mm 物品标签，并显示真实二维码预览。
+- 虚拟货架测试台可在没有电子秤和标签机时模拟完整扫码流程。
 
-```text
-生成固定标签 -> 扫码 -> 补重量/数量和库位 -> 点确认写入 -> 本地查库存
-```
+## Android 下载
 
-当前主线是原生 Android 第一版：
+当前测试版本为 `0.5.2`，支持 Android 12 及以上版本。
 
-```text
-mobile_android/
-Kotlin + Jetpack Compose + CameraX + ML Kit
-```
+- [GitHub Release v0.5.2](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.2)
+- 通用 APK：`studio-inventory-native-0.5.2-universal.apk`
+- arm64 APK：`studio-inventory-native-0.5.2-arm64.apk`
 
-当前 0.5.2 测试 APK 使用 Android SQLite，并加入本地优先的加密 WebDAV 多设备同步、冲突处理和全量备份恢复。
+## 标签打印机
 
-下载：[GitHub Release v0.5.2](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.2)
+当前明确支持 **德佟 DeTong / DothanTech 的 LPAPI 蓝牙标签机**。项目已接入德佟 Android LPAPI，并验证了打印机搜索和连接。
 
-旧 Web/Capacitor、Flutter 手机实现和早期 JS 检测版已清理。当前仓库只保留原生 Android 主线、虚拟货架测试台、文档和最新测试 APK。
+德佟 DP23、DP30 系列的官方手册明确标注使用 LPAPI，可作为优先实测型号。其他德佟型号需要在购买前逐型号确认；普通蓝牙打印机、ESC/POS 小票机和其他品牌标签机目前不保证兼容。
 
-## 标签打印机支持
+详细兼容边界和真机验收状态见 [Android 构建与设备支持记录](./docs/17-android-build-and-device-support.md)。
 
-当前打印功能只明确支持 **德佟（DeTong，SDK 包名为 DothanTech）LPAPI 蓝牙标签机**，不是通用蓝牙打印接口。
+## 虚拟货架
 
-```text
-已接入 SDK：LPAPI-2026-01-08-R
-Android 接口：com.dothantech.lpapi.LPAPI
-连接方式：蓝牙搜索、连接和启动自动重连
-当前模板：40 x 30 mm，按 200/203 DPI 设计
-```
+- 在线测试：[GitHub Pages](https://llleeeqi.github.io/maker-studio-inventory/tools/)
+- 本地入口：[tools/index.html](./tools/index.html)
 
-| 品牌或范围 | 当前结论 |
+## 项目结构
+
+| 路径 | 内容 |
 |---|---|
-| 德佟 DeTong / DothanTech 的 LPAPI 标签机 | 已接入；App 内搜索和连接已验证 |
-| 德佟 DP23、DP30 系列 | 官方手册明确标注 LPAPI，可作为当前优先实测机型 |
-| 德佟其他型号 | 购买前必须确认该型号支持 Android LPAPI；不能只根据“德佟”品牌判断 |
-| 其他品牌蓝牙标签机 | 当前不保证支持；即使系统蓝牙可以配对，也不代表 LPAPI 可以打印 |
-| ESC/POS 小票机、CPCL 打印机 | 当前未接入对应协议，不属于已支持范围 |
-
-采购或接入新机型时，应向厂商确认它能否使用德佟 Android LPAPI，或者直接确认 SDK 是否提供 `com.dothantech.lpapi.LPAPI`。当前已经验证搜索和连接；实体标签机上的 40x30mm 排版、走纸、浓度和二维码可扫性仍需真机打印验收。
-
-官方资料：[Android SDK](https://detonger.com/#/sdk/detail?sdkID=16BC0F46-ACC4-4EBB-9340-47328936E779) · [德佟产品中心](https://www.detonger.com/) · [DP23/DP30 官方手册](https://en.detonger.com/userManual/User%27s%20Manual%20for%20DP23%2C%20DP30%20Thermal%20Label%20Printer.pdf)
-
-## 当前决策
-
-Android 配置：
-
-```text
-applicationId = studio.inventory.android
-minSdk = 31
-targetSdk = 36
-compileSdk = 36
-```
-
-第一版只做 Android 本地闭环：
-
-- 页面内嵌相机扫码，只识别二维码。
-- 只支持 `v1;`，不兼容旧短码和 `msi:v1;`。
-- 新增页生成固定标签，并接入德佟 LPAPI 打印骨架。
-- 扫物品码只展示固定信息，不自动写库存。
-- 入库必须补齐物品、重量/数量和库位，并点击确认。
-- 库位整理模式允许进入后连续扫码自动更新库位。
-- SQLite 数据库使用 `items / locations / transactions / scan_logs` 四张表。
-- 0.4.1 已重写扫码会话、扫码后确认、模式切换和底部当前流程浮层。
-- 0.4.1 库存列表支持点击详情，并提供二次确认的出库和归档。
-- 0.5.0 增加右上角云状态、WebDAV 同步中心、设备登记、整条记录冲突处理、自动/手动备份和文件导入导出。
-- 0.5.0 已在 Android 12 MuMu 模拟器连接真实 WebDAV，完成同步、备份、导出、导入、恢复暂停和取消恢复验收。
-- 0.5.1 在重量/数量步骤和当前流程浮层提供手动测量值录入，不提供手动二维码 payload 输入。
-- 0.5.1 标签预览改为真实二维码，并按 Android 报告的屏幕 DPI 尽量以 40x30mm 实际尺寸显示。
-- 0.5.1 release 开启 R8 和资源压缩，同时提供通用 APK 与更小的 arm64 APK。
-- 0.5.2 使用系统安全区适配透明状态栏、屏幕开孔和底部手势导航。
-- 0.5.2 库存搜索支持中文、完整拼音、拼音首字母和轻微拼写错误，并提供本地候选。
-- 0.5.2 库存页支持按库位分组查看当前在库物品。
-
-## 0.5.2 改动
-
-| 范围 | 行为 | 状态 |
-|---|---|---|
-| 全面屏 | 顶部栏避开状态栏和开孔，底部导航避开手势区 | MuMu 已验收，小米 17 待复核 |
-| 本地搜索 | 首次输入时后台全量建立中文、拼音、首字母和模糊搜索索引 | 单元测试和 MuMu 已验收 |
-| 搜索候选 | 最多显示 6 个本地匹配建议，点击直接打开库存详情 | MuMu 已验收 |
-| 索引边界 | 仅为本机内存派生缓存，不进入 SQLite、WebDAV 或备份 | 已实现 |
-| 库位视图 | “按物品 / 按库位”切换，库位卡片显示数量和物品摘要 | MuMu 已验收 |
-| 库位详情 | 点击库位查看完整在库清单，再点击物品进入现有详情 | MuMu 已验收 |
-| 手动更新 | 流水页点击“检查更新”；有新版直接打开对应 GitHub Release | MuMu 已验收 |
-| 开始引导 | 首次进入扫码页显示一次简短引导，点“开始”直接启动相机 | MuMu 已验收 |
-
-## 0.5.1 改动
-
-| 范围 | 行为 | 状态 |
-|---|---|---|
-| 手动测量 | 耗材可手输毛重；零件可选择按总重自动估算数量或直接输入数量 | MuMu 已验收 |
-| 操作入口 | 确认物品后可点击步骤条“重量/数量”或当前流程浮层“手动录入” | MuMu 已验收 |
-| 输入校验 | 耗材毛重必须大于空盘；零件总重和数量必须为正数 | 已构建 |
-| 标签预览 | SDK 预览不可用时由 ZXing 生成真实 Q 级纠错二维码，不再显示假二维码 | MuMu 已验收 |
-| 实际尺寸 | 读取屏幕像素和 DPI，40x30mm 标签能放下时按报告尺寸 1:1 显示 | MuMu 已验收 |
-| 安装包 | release 启用 R8/资源压缩；通用包保留全部 ABI，arm64 包面向常见实体手机 | 已构建 |
-
-## 0.5.0 改动
-
-| 范围 | 行为 | 状态 |
-|---|---|---|
-| 本地优先 | 扫码和库存写入先提交 SQLite，网络失败不阻塞日常操作 | 已验收 |
-| WebDAV | 加密对象、加密索引、`refs/latest`、设备登记和 30 秒续期云锁 | 已验收 |
-| 状态标 | 右上角小云朵：灰色离线、绿色在线、绿色转圈同步、红色待处理 | MuMu 已验收 |
-| 多设备合并 | `base / local / remote` 三方合并，物品按完整记录判断冲突，流水按唯一 ID 合并 | 单元测试通过 |
-| 冲突处理 | 在库物品重新扫码确认；也可确认已出库/归档；库位等记录可选本机或云端 | 已构建 |
-| 调度 | 前台 3/5/10/30/60 秒或仅手动，变动使用 WorkManager 防抖同步 | 已验收 |
-| 返回逻辑 | 子页面返回扫码首页并同步；首页有待同步数据时二次返回退出 | 已验收 |
-| 全量备份 | 本机、云端、系统文件导出/导入；恢复后暂停同步，可取消或设为新基准 | MuMu 已验收 |
-| 加密边界 | WebDAV 凭据由 Android Keystore 保存；云端仓库 AES-256-GCM；备份只加密凭据块 | 单元测试和文件检查通过 |
-| 历史控制 | 索引达到 100 个或 7 天清理，保留最近 20；自动备份本机 10、云端 30 | 已构建 |
-
-## 0.4.1 改动
-
-| 范围 | 原问题 | 0.4.1 行为 | 状态 |
-|---|---|---|---|
-| 扫码状态 | 物品、重量、库位和冲突状态分散，容易互相覆盖 | 统一为一个 `ScanWorkflowState`，一个流程只保留一套当前上下文 | 已构建 |
-| 扫码确认 | 扫码结果塞在页面里，等待和确认不清晰 | 识别后暂停相机分析，在 App 内底部确认层确认或取消 | MuMu 已验收 |
-| 当前流程 | 提醒区容易挤压、覆盖页面 | 当前流程浮在底部导航上方，并按模式和物品类型只显示必要字段 | MuMu 已验收 |
-| 模式切换 | 未完成流程可能被直接丢失 | 切换入库、更新库存、绑定库位前确认是否清空 | 已构建 |
-| 库位整理 | 连续扫码可能重复写同一物品 | 已在目标库位的物品直接跳过，不重复更新时间和成功日志 | 已构建 |
-| 库存详情 | 列表不能展开查看关键变量 | 点击查看耗材重量、零件数量、库位、格式化时间和最近流水 | MuMu 已验收 |
-| 低频动作 | 出库和归档入口不明确 | 从库存详情发起，并再次确认 | MuMu 已验收 |
-| 归档边界 | 归档标签仍可能重新进入扫码流程 | 归档物品拒绝入库、盘点、绑定和整理库位 | 已构建 |
-| 相机资源 | 离开扫码页后分析线程和扫描器可能残留 | 页面销毁时释放资源，20 秒无扫码自动暂停 | MuMu 已验收 |
-| 零件精度 | `0.42g` 单重会被确认页四舍五入成 `0.4g` | 固定重量参数按原精度回填和显示，420g 正确换算为 1000 件 | 单元测试和 MuMu 已验收 |
-| 数据落盘 | 每次保存会整批重写四张表 | 日常操作改为物品、库位、流水、扫码日志分别增量写入；整表替换只用于迁移/导入 | SQLite 直查已验收 |
-| 库存查找 | 搜索和类型/状态组合条件缺少独立验证 | 支持 ID、名称、品牌、材料、颜色、备注和库位，组合类型/状态过滤 | 单元测试和 MuMu 已验收 |
-| 更新入口 | App 内找不到项目和新版本下载位置 | 流水页显示版本和可点击 GitHub 仓库地址 | MuMu 已验收 |
-
-## 二维码协议
-
-长期协议：
-
-```text
-v1;key=value;key=value
-```
-
-示例：
-
-```text
-v1;type=spool;id=FIL-260617-001;brand=Bambu;material=PLA;color=white;tare_g=200;created_on=260622;note=备注
-v1;type=part;id=PART-260617-001;name=M3x8黑色圆头螺丝;unit_weight_g=0.42;created_on=260622;note=备注
-v1;type=other;id=ITEM-260617-001;name=热风枪;created_on=260622;note=备注
-v1;type=location;id=LOC-260617-001;name=A架第一层;created_on=260622;note=备注
-v1;type=weight;value_g=712.4
-```
-
-规则：
-
-- 二维码只存固定信息，不存当前重量、数量、库位和状态。
-- 字段值里的中文、空格和分隔符会在二维码中百分号编码，App 扫码后自动解码。
-- 每张实体标签唯一 ID。
-- 耗材名称可由 `brand + material + color` 自动生成。
-- 耗材入库必须有当前毛重，且 `current_g > tare_g`。
-- 零件主变量是数量，可用总重量和 `unit_weight_g` 换算。
-- 入库必须有库位。
-
-## 目录
-
-| 路径 | 作用 |
-|---|---|
-| `mobile_android/` | 原生 Android 主线 |
-| `tools/` | 虚拟货架测试台 |
-| `docs/` | 当前设计和后续开发记录 |
-| `studio-inventory-native-0.5.2-universal.apk` | 当前通用 release APK |
-| `studio-inventory-native-0.5.2-arm64.apk` | 更小的 arm64 release APK |
-
-虚拟货架测试台：
-
-- GitHub Pages: https://llleeeqi.github.io/maker-studio-inventory/tools/
-- 本地打开: [tools/index.html](./tools/index.html)
+| `mobile_android/` | 原生 Android App 主线 |
+| `tools/` | 虚拟货架和二维码测试台 |
+| `docs/` | 产品规则、协议、进度、构建和发版记录 |
 
 ## 文档
 
-从 [docs/README.md](./docs/README.md) 开始看。
+从 [docs/README.md](./docs/README.md) 开始查看完整文档。
 
-关键文档：
+- [当前进度](./docs/14-current-progress.md)
+- [操作和按钮逻辑](./docs/09-operation-button-logic.md)
+- [扫码工作流](./docs/01-qr-input-workflows.md)
+- [二维码协议](./docs/12-v1-protocol-and-scope.md)
+- [WebDAV 同步设计](./docs/16-webdav-sync-v1.md)
+- [发版和项目管理](./docs/15-release-workflow-and-project-management.md)
 
-- [架构决策.md](./架构决策.md)：当前技术路线。
-- [docs/13-native-android-v1-plan.md](./docs/13-native-android-v1-plan.md)：原生 Android v1 总计划。
-- [docs/12-v1-protocol-and-scope.md](./docs/12-v1-protocol-and-scope.md)：`v1;` 协议和本地记录边界。
-- [docs/01-qr-input-workflows.md](./docs/01-qr-input-workflows.md)：扫码输入流程。
-- [docs/04-next-steps.md](./docs/04-next-steps.md)：下一阶段开发清单。
-- [docs/14-current-progress.md](./docs/14-current-progress.md)：当前实测进度和上下文恢复入口。
-- [docs/15-release-workflow-and-project-management.md](./docs/15-release-workflow-and-project-management.md)：发版流程、版本记录和项目队列。
-- [docs/16-webdav-sync-v1.md](./docs/16-webdav-sync-v1.md)：0.5.0 WebDAV 同步、冲突和备份协议。
-- [mobile_android/INTERACTION_REWRITE.md](./mobile_android/INTERACTION_REWRITE.md)：0.4.1 交互重写边界。
-- [mobile_android/MANUAL_TEST_MATRIX.md](./mobile_android/MANUAL_TEST_MATRIX.md)：0.4.1 验收表。
-
-## 后续方向
-
-近期：
-
-1. 在实体 Android 手机上复核相机画面、软键盘和大字体布局。
-2. 标签机到手后验证 40x30mm 实际打印和二维码可扫性。
-3. 用第二台实体 Android 设备复核真实双端并发冲突。
-
-中期：
-
-- 是否把当前 SQLiteOpenHelper 数据层迁成 Room DAO。
-- WebDAV 服务器兼容性扩展和更完整的诊断导出。
-- 正式签名。
-- 真机验证打印能力。
+项目仓库：[github.com/llleeeqi/maker-studio-inventory](https://github.com/llleeeqi/maker-studio-inventory)
