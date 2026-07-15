@@ -25,6 +25,29 @@ Kotlin + Jetpack Compose + CameraX + ML Kit
 
 旧 Web/Capacitor、Flutter 手机实现和早期 JS 检测版已清理。当前仓库只保留原生 Android 主线、虚拟货架测试台、文档和最新测试 APK。
 
+## 标签打印机支持
+
+当前打印功能只明确支持 **德佟（DeTong，SDK 包名为 DothanTech）LPAPI 蓝牙标签机**，不是通用蓝牙打印接口。
+
+```text
+已接入 SDK：LPAPI-2026-01-08-R
+Android 接口：com.dothantech.lpapi.LPAPI
+连接方式：蓝牙搜索、连接和启动自动重连
+当前模板：40 x 30 mm，按 200/203 DPI 设计
+```
+
+| 品牌或范围 | 当前结论 |
+|---|---|
+| 德佟 DeTong / DothanTech 的 LPAPI 标签机 | 已接入；App 内搜索和连接已验证 |
+| 德佟 DP23、DP30 系列 | 官方手册明确标注 LPAPI，可作为当前优先实测机型 |
+| 德佟其他型号 | 购买前必须确认该型号支持 Android LPAPI；不能只根据“德佟”品牌判断 |
+| 其他品牌蓝牙标签机 | 当前不保证支持；即使系统蓝牙可以配对，也不代表 LPAPI 可以打印 |
+| ESC/POS 小票机、CPCL 打印机 | 当前未接入对应协议，不属于已支持范围 |
+
+采购或接入新机型时，应向厂商确认它能否使用德佟 Android LPAPI，或者直接确认 SDK 是否提供 `com.dothantech.lpapi.LPAPI`。当前已经验证搜索和连接；实体标签机上的 40x30mm 排版、走纸、浓度和二维码可扫性仍需真机打印验收。
+
+官方资料：[Android SDK](https://detonger.com/#/sdk/detail?sdkID=16BC0F46-ACC4-4EBB-9340-47328936E779) · [德佟产品中心](https://www.detonger.com/) · [DP23/DP30 官方手册](https://en.detonger.com/userManual/User%27s%20Manual%20for%20DP23%2C%20DP30%20Thermal%20Label%20Printer.pdf)
+
 ## 当前决策
 
 Android 配置：

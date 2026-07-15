@@ -48,6 +48,22 @@ studio-inventory-native-0.5.2-arm64.apk
 
 下载：[GitHub Release v0.5.2](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.2)
 
+## 标签打印机兼容范围
+
+当前 Android 工程集成的是德佟官方 `LPAPI-2026-01-08-R.jar`，接口包为 `com.dothantech.lpapi.LPAPI`。
+
+| 设备 | 状态 |
+|---|---|
+| 德佟 DeTong / DothanTech LPAPI 蓝牙标签机 | 支持搜索和连接，连接流程已验证 |
+| 德佟 DP23、DP30 系列 | 官方手册标注使用 LPAPI，列为优先真机打印验证型号 |
+| 德佟其他型号 | 需要逐型号确认 Android LPAPI 支持 |
+| 其他品牌蓝牙标签机 | 不保证兼容 |
+| 通用 ESC/POS 或 CPCL 打印机 | 当前没有接入对应打印协议 |
+
+蓝牙能够配对不等于能够打印。选购设备时必须确认其 Android SDK 是德佟 LPAPI，或确认能调用 `com.dothantech.lpapi.LPAPI`。当前标签模板为 40x30mm、200/203 DPI；搜索和连接已验证，实际出纸与二维码可扫性待实体打印机复核。
+
+官方资料：[Android SDK](https://detonger.com/#/sdk/detail?sdkID=16BC0F46-ACC4-4EBB-9340-47328936E779) · [DP23/DP30 官方手册](https://en.detonger.com/userManual/User%27s%20Manual%20for%20DP23%2C%20DP30%20Thermal%20Label%20Printer.pdf)
+
 ## 0.5.2 变更表
 
 | 范围 | 新行为 | 验证 |
