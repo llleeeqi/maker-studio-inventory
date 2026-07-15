@@ -30,6 +30,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -39,6 +41,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -677,6 +680,10 @@ fun AddLabelPage(
 fun TransactionsPage(controller: InventoryController, modifier: Modifier = Modifier) {
     val transactions = controller.snapshot.transactions.asReversed()
     val uriHandler = LocalUriHandler.current
+    val updateChecker = remember { UpdateChecker() }
+    val scope = rememberCoroutineScope()
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var updateResult by remember { mutableStateOf<Result<UpdateCheckResult>?>(null) }
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -687,11 +694,34 @@ fun TransactionsPage(controller: InventoryController, modifier: Modifier = Modif
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text("最近流水 ${transactions.size}", style = MaterialTheme.typography.titleLarge)
                 Text("版本 ${BuildConfig.VERSION_NAME}", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(
-                    onClick = { uriHandler.openUri(RepositoryUrl) },
-                    contentPadding = PaddingValues(0.dp),
-                ) {
-                    Text("github.com/llleeeqi/maker-studio-inventory")
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            isCheckingUpdate = true
+                            scope.launch {
+                                val result = updateChecker.check(BuildConfig.VERSION_NAME)
+                                val update = result.getOrNull()
+                                if (update?.updateAvailable == true) {
+                                    uriHandler.openUri(update.releaseUrl)
+                                } else {
+                                    updateResult = result
+                                }
+                                isCheckingUpdate = false
+                            }
+                        },
+                        enabled = !isCheckingUpdate,
+                    ) {
+                        if (isCheckingUpdate) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = null)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (isCheckingUpdate) "正在检查" else "检查更新")
+                    }
+                    TextButton(onClick = { uriHandler.openUri(RepositoryUrl) }) {
+                        Text("项目仓库")
+                    }
                 }
             }
         }
@@ -704,9 +734,35 @@ fun TransactionsPage(controller: InventoryController, modifier: Modifier = Modif
             )
         }
     }
+    updateResult?.let { result ->
+        AlertDialog(
+            onDismissRequest = { updateResult = null },
+            title = {
+                Text(
+                    when {
+                        result.isFailure -> "检查更新失败"
+                        else -> "已是最新版本"
+                    },
+                )
+            },
+            text = {
+                Text(
+                    when {
+                        result.isFailure -> result.exceptionOrNull()?.message ?: "无法连接 GitHub。"
+                        else -> "当前版本 ${BuildConfig.VERSION_NAME} 已是 GitHub 最新版本。"
+                    },
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    updateResult = null
+                }) {
+                    Text("知道了")
+                }
+            },
+        )
+    }
 }
-
-private const val RepositoryUrl = "https://github.com/llleeeqi/maker-studio-inventory"
 
 @Composable
 private fun InfoRow(label: String, value: String) {

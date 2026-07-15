@@ -5,6 +5,7 @@
 
 package studio.inventory.android
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +28,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -55,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
@@ -62,14 +65,23 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
 private const val ScannerIdlePauseMs = 20_000L
+private const val StartGuidePreferences = "start_guide"
+private const val StartGuideSeenKey = "seen_v1"
 
 @Composable
 fun ScanWorkspacePage(controller: InventoryController, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val guidePreferences = remember {
+        context.getSharedPreferences(StartGuidePreferences, Context.MODE_PRIVATE)
+    }
     var scannerRunning by remember { mutableStateOf(false) }
     var torchOn by remember { mutableStateOf(false) }
     var lastScannerActivityAt by remember { mutableLongStateOf(0L) }
     var showHistory by remember { mutableStateOf(false) }
     var showManualMeasurement by remember { mutableStateOf(false) }
+    var showStartGuide by remember {
+        mutableStateOf(!guidePreferences.getBoolean(StartGuideSeenKey, false))
+    }
     var sessionPanelHeightPx by remember { mutableIntStateOf(0) }
     val review = controller.scanReview
     val sessionActive = controller.scanState.hasSession
@@ -99,6 +111,12 @@ fun ScanWorkspacePage(controller: InventoryController, modifier: Modifier = Modi
             item.type == ItemType.Other -> controller.reportError("其他物品不需要重量或数量。")
             else -> showManualMeasurement = true
         }
+    }
+
+    fun closeStartGuide(startScanning: Boolean) {
+        guidePreferences.edit().putBoolean(StartGuideSeenKey, true).apply()
+        showStartGuide = false
+        if (startScanning) startScanner()
     }
 
     LaunchedEffect(scannerRunning, lastScannerActivityAt, review, showManualMeasurement) {
@@ -218,6 +236,19 @@ fun ScanWorkspacePage(controller: InventoryController, modifier: Modifier = Modi
         ManualMeasurementSheet(
             controller = controller,
             onDismiss = { showManualMeasurement = false },
+        )
+    }
+    if (showStartGuide) {
+        AlertDialog(
+            onDismissRequest = { closeStartGuide(startScanning = false) },
+            title = { Text("开始使用") },
+            text = { Text("从扫码开始，按物品、重量/数量、库位完成当前流程。") },
+            confirmButton = {
+                Button(onClick = { closeStartGuide(startScanning = true) }) { Text("开始") }
+            },
+            dismissButton = {
+                TextButton(onClick = { closeStartGuide(startScanning = false) }) { Text("稍后") }
+            },
         )
     }
 }

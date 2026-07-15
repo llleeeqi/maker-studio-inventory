@@ -56,6 +56,8 @@ GitHub Release 可打开
 索引不写数据库、不参与 WebDAV 同步或备份
 库存变化后下次搜索全量重建，增量索引列为后续待做
 库存页增加按物品/按库位切换和库位内容清单
+流水页增加手动检查更新，有更高版本直接跳转 GitHub Release
+首次进入扫码页显示一次开始引导，开始按钮直接启动相机
 ```
 
 验证状态：
@@ -66,8 +68,10 @@ Android 12 MuMu edge-to-edge 顶部状态栏避让通过
 refengqi 和 rfq 均找到本地“热风枪”并打开详情
 测试库位正确显示 3 件在库物品，并可继续打开物品详情
 arm64 release 冷启动和 R8 后拼音搜索通过
-通用 APK: 26,795,559 bytes，SHA256 6cb27888583870563103b3a5d9e6522bcd9140672afda475e12cf37c68173c68
-arm64 APK: 11,246,138 bytes，SHA256 2658e695283e9d64ab0cdcf6584fdbe4871d6cb126271b96d611abf85bfcdd1d
+手动检查更新在当前版本正确提示已是最新
+首次引导开始相机和重启后不重复显示通过
+通用 APK: 26,811,943 bytes，SHA256 ac3e09f5af91a9f3b17659d52c200d24fa30865af50d38a3c9c8f5a488ddc123
+arm64 APK: 11,262,522 bytes，SHA256 e58a6bf394482b53a4146cef8a6ed0a41982e53c4ec4bf77598eec79f522f3d4
 小米 17 全面屏仍待用户安装复核
 ```
 
