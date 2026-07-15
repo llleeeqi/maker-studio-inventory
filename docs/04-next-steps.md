@@ -6,13 +6,14 @@
 
 ## 产品功能方向
 
-- 开发可独立使用的 Web 客户端，不只提供只读库存查看。
-- Web 客户端拥有自己的本地数据、设备身份和同步状态，通过现有 WebDAV 仓库与 Android 客户端双向同步。
-- Web 客户端需要兼容现有云端加密对象、索引、冲突和备份格式，不另建中心库存服务端。
-- Web 客户端优先按 PWA 实现，使电脑和 iOS 都能安装到桌面或主屏幕，减少原生 iOS App 的审核和发布成本。
-- iOS PWA 优先验证摄像头扫码、离线本地数据和 WebDAV 同步；摄像头使用 `getUserMedia`，必须在实体 iPhone 上验证生命周期和系统版本差异。
-- 电脑端评估通过 WebUSB 或德佟 PC Web 接口连接 USB 标签机。
-- iOS WebKit 当前不提供 Web Bluetooth 和 WebUSB，iOS PWA 直连标签机暂不承诺；后续结合德佟接口和实体设备单独验证可行性。
+- 开发类似思源 Docker 版的自托管服务，由一台常开的电脑进程或 Docker 容器运行。
+- 服务端持有工作数据库、设备身份和同步状态，并通过现有 WebDAV 仓库与 Android 客户端同步。
+- 浏览器是服务端界面，不直接把 WebDAV 当数据库，也不承诺离线独立工作；使用时必须能够连接自托管服务。
+- 同一套 Web 界面同时服务电脑浏览器和 iOS PWA，减少原生 iOS App 的审核和发布成本。
+- iOS PWA 使用 `getUserMedia` 调用摄像头扫码，必须在实体 iPhone 上验证权限、后台恢复和页面生命周期。
+- 打印优先验证两条路径：服务端所在电脑通过德佟 Windows/PC Web 接口连接 USB 标签机；iOS PWA 调起德佟 App 并移交打印任务。
+- 德佟公开资料目前没有发现 App 调起打印所需的 URL Scheme、Universal Link 或分享协议，该路径需要向厂商确认后再实现。
+- 如果德佟 App 无法被外部调起，iOS PWA 仍可把打印任务提交给服务端，由连接标签机的电脑完成打印。
 
 相关官方资料：
 
@@ -20,6 +21,8 @@
 - [WebKit：摄像头 getUserMedia](https://webkit.org/blog/7763/a-closer-look-into-webrtc/)
 - [WebKit：暂不实现 Web Bluetooth 和 WebUSB](https://webkit.org/tracking-prevention/)
 - [德佟 SDK 下载页](https://en.detonger.com/)
+- [德佟 iOS 蓝牙打印接口](https://en.detonger.com/software/um/%E5%BE%B7%E4%BD%9F%E7%94%B5%E5%AD%90-%E8%93%9D%E7%89%99%E6%89%93%E5%8D%B0%E6%8E%A5%E5%8F%A3iOS%E4%BD%BF%E7%94%A8%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8-2021-05-08.pdf)
+- [德佟 Windows USB 打印接口](https://en.detonger.com/software/um/%E5%BE%B7%E4%BD%9F%E7%94%B5%E5%AD%90-USB%E6%89%93%E5%8D%B0%E6%8E%A5%E5%8F%A3Windows%E4%BD%BF%E7%94%A8%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8-2021-05-08.pdf)
 - 增加待打印标签清单：可以先生成并保存准备打印的标签，等物品、打印机或标签纸到位后集中打印。
 - 待打印标签不算库存建档，不影响库存数量和库位；实际物品仍需扫码并完成入库后才写入库存。
 - 接入能够显示或输出二维码的电子秤，继续保留手动录入重量作为备用方式。
@@ -58,7 +61,6 @@
 
 ## 暂不进入近期计划
 
-- 自建 Docker 服务端。
 - 账号、成员和审批系统。
-- PWA 或重新引入 Flutter/Capacitor。
+- 重新引入 Flutter/Capacitor 手机客户端。
 - 自然语言库存助手。
