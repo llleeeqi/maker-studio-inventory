@@ -136,7 +136,7 @@ function flowCards(data) {
       title: "入库耗材",
       steps: [
         ["扫耗材标签", data.spool],
-        ["扫毛重 712.4g", data.weights[0]],
+        ["扫毛重 712.4g（或手输）", data.weights[0]],
         ["扫测试库位", data.location],
         ["手机上点入库", null],
       ],
@@ -145,7 +145,7 @@ function flowCards(data) {
       title: "入库零件",
       steps: [
         ["扫零件标签", data.part],
-        ["扫总重 420g", data.weights[1]],
+        ["扫总重 420g（或手输）", data.weights[1]],
         ["扫测试库位", data.location],
         ["手机上点入库", null],
       ],

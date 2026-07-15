@@ -31,6 +31,18 @@
 
 详细兼容边界和真机验收状态见 [Android 构建与设备支持记录](./docs/17-android-build-and-device-support.md)。
 
+## TODO
+
+- [ ] 用实体标签机完成 40 x 30 mm 排版、走纸、浓度和二维码可扫性验收。
+- [ ] 在小米 17 等实体手机复核全面屏、相机、软键盘和大字体布局。
+- [ ] 使用两台实体 Android 设备验证 WebDAV 并发同步和冲突处理。
+- [ ] 增加同步诊断信息和可导出的故障报告。
+- [ ] 库存规模增长后实现增量搜索索引，减少重复全量重建。
+- [ ] 评估将 SQLiteOpenHelper 数据层迁移到 Room。
+- [ ] 在德佟 LPAPI 真机稳定后，再评估接入其他标签机品牌或打印协议。
+
+完整路线和优先级见 [下一阶段开发清单](./docs/04-next-steps.md)。
+
 ## 虚拟货架
 
 - 在线测试：[GitHub Pages](https://llleeeqi.github.io/maker-studio-inventory/tools/)

@@ -4,13 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>虚拟货架测试台</title>
-    <link rel="stylesheet" href="../app/styles.css" />
+    <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <header class="topbar">
       <div>
         <h1>虚拟货架测试台</h1>
-        <p>模拟已经贴好标签的货架、物品和重量码；手机 App 只能扫码走真实流程。</p>
+        <p>模拟已经贴好标签的货架、物品和电子秤；物品与库位扫码，重量可扫码或在 App 手动录入。</p>
       </div>
       <button id="newBatch" type="button" class="ghost">生成新测试批次</button>
     </header>
@@ -62,7 +62,7 @@
       <section class="tool-panel">
         <div class="tool-section-head">
           <h2>推荐扫码顺序</h2>
-          <p class="tool-subtitle">二维码默认遮盖；鼠标悬停或点击标签显示二维码。</p>
+          <p class="tool-subtitle">二维码默认遮盖；鼠标悬停或点击标签显示。重量步骤也可在 App 内手动录入。</p>
         </div>
         <div id="flowGrid" class="flow-grid"></div>
       </section>

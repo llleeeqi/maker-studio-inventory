@@ -82,6 +82,7 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 - MuMu 已验证 `refengqi`、`rfq` 搜索“热风枪”，以及库位清单到物品详情的跳转。
 - 流水页提供手动“检查更新”；只有点击时访问 GitHub，有更高版本直接打开对应 Release 页面。
 - 首次进入扫码页显示一次“开始使用”引导，点“开始”直接启动相机；关闭或完成后不再重复显示。
+- tools 虚拟货架已改为自包含样式，不再依赖待清理的旧 Web App；页面明确重量既可扫模拟电子秤二维码，也可在 App 手动录入。
 
 ## 暂缓事项
 
