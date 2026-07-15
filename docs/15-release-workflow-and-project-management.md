@@ -3,10 +3,10 @@
 ## 当前版本
 
 ```text
-当前可测版: v0.5.1
-APK: studio-inventory-native-0.5.1-universal.apk
-推荐实体手机: studio-inventory-native-0.5.1-arm64.apk
-Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.1
+当前可测版: v0.5.2
+APK: studio-inventory-native-0.5.2-universal.apk
+推荐实体手机: studio-inventory-native-0.5.2-arm64.apk
+Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.2
 ```
 
 ## 工作流
@@ -41,6 +41,35 @@ GitHub Release 可打开
 ```
 
 ## 版本记录
+
+### v0.5.2
+
+全面屏适配、本地拼音搜索和库位分组版本。
+
+已完成：
+
+```text
+状态栏、屏幕开孔和底部手势区使用系统安全区布局
+库存搜索支持中文、完整拼音、拼音首字母和轻微拼写错误
+首次搜索时后台全量建立本地派生索引，并显示索引提示
+本地候选点击后直接打开物品库存详情
+索引不写数据库、不参与 WebDAV 同步或备份
+库存变化后下次搜索全量重建，增量索引列为后续待做
+库存页增加按物品/按库位切换和库位内容清单
+```
+
+验证状态：
+
+```text
+./gradlew testDebugUnitTest assembleDebug 通过
+Android 12 MuMu edge-to-edge 顶部状态栏避让通过
+refengqi 和 rfq 均找到本地“热风枪”并打开详情
+测试库位正确显示 3 件在库物品，并可继续打开物品详情
+arm64 release 冷启动和 R8 后拼音搜索通过
+通用 APK: 26,795,559 bytes，SHA256 6cb27888583870563103b3a5d9e6522bcd9140672afda475e12cf37c68173c68
+arm64 APK: 11,246,138 bytes，SHA256 2658e695283e9d64ab0cdcf6584fdbe4871d6cb126271b96d611abf85bfcdd1d
+小米 17 全面屏仍待用户安装复核
+```
 
 ### v0.5.1
 

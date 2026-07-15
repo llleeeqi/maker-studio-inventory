@@ -1,6 +1,6 @@
 # 当前进度和恢复上下文
 
-更新时间: 2026-07-14
+更新时间: 2026-07-15
 
 ## 当前主线
 
@@ -13,9 +13,9 @@ mobile_android/
 当前可测包:
 
 ```text
-studio-inventory-native-0.5.1-universal.apk
-studio-inventory-native-0.5.1-arm64.apk
-GitHub Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.1
+studio-inventory-native-0.5.2-universal.apk
+studio-inventory-native-0.5.2-arm64.apk
+GitHub Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.2
 ```
 
 线上虚拟货架:
@@ -74,6 +74,12 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 - 零件手动录入支持“按总重”自动估算数量和“按数量”直接输入，两种模式不会保留互相冲突的旧值。
 - 标签预览已使用真实二维码；读取屏幕像素和 DPI，在空间允许时按 40x30mm 报告尺寸 1:1 显示。
 - release 构建已启用 R8 和资源压缩，并支持按 `targetAbi` 构建更小的单 ABI 包。
+- 0.5.2 顶部栏使用状态栏安全区，底部栏使用手势导航安全区，修复透明系统栏覆盖内容的问题。
+- 0.5.2 库存搜索首次输入时在后台全量建立本地索引，支持中文、拼音、首字母和轻微拼写错误。
+- 搜索索引不进入数据库、同步或备份；库存变化后下次搜索全量重建，增量索引暂缓。
+- 搜索结果提供最多 6 个本地候选，点击可直接打开物品详情。
+- 库存页支持“按物品 / 按库位”，库位视图只统计当前在库物品，未绑定物品单独成组。
+- MuMu 已验证 `refengqi`、`rfq` 搜索“热风枪”，以及库位清单到物品详情的跳转。
 
 ## 暂缓事项
 
@@ -81,12 +87,14 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 - 屏幕 DPI 来自 Android/设备报告，模拟器和部分手机可能报告不准；最终纸面效果仍以 200dpi 标签机实打为准。
 - 现有 JSON 只作为测试版存量数据/迁移来源，不再作为后续主要数据层扩展。
 - 还没有用两台实体 Android 设备做真实并发冲突验收；当前冲突规则由单元测试、单机流程和数据库检查覆盖。
+- 小米 17 的透明状态栏重叠修复需要用户安装 0.5.2 后复核真实开孔和手势区。
 
 ## 下一轮重点
 
 - 在实体 Android 手机上复核真实相机画面、扫码速度、大字体和软键盘布局。
 - 打印机到手后验证 40x30mm 纸面排版和二维码可扫性。
 - 打印实测后再排 Room 迁移和同步诊断导出优先级。
+- 库存规模明显增长后，再考虑搜索索引增量更新和持久化缓存。
 
 主要参考文档:
 

@@ -11,8 +11,8 @@ android {
         applicationId = "studio.inventory.android"
         minSdk = 31
         targetSdk = 36
-        versionCode = 51
-        versionName = "0.5.1"
+        versionCode = 52
+        versionName = "0.5.2"
 
         providers.gradleProperty("targetAbi").orNull?.let { targetAbi ->
             ndk {
@@ -66,6 +66,7 @@ dependencies {
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("com.google.zxing:core:3.5.4")
+    implementation("com.github.promeg:tinypinyin:2.0.3")
     implementation("com.squareup.okhttp3:okhttp:5.4.0")
     implementation("androidx.work:work-runtime:2.11.2")
 

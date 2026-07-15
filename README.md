@@ -19,9 +19,9 @@ mobile_android/
 Kotlin + Jetpack Compose + CameraX + ML Kit
 ```
 
-当前 0.5.1 测试 APK 使用 Android SQLite，并加入本地优先的加密 WebDAV 多设备同步、冲突处理和全量备份恢复。
+当前 0.5.2 测试 APK 使用 Android SQLite，并加入本地优先的加密 WebDAV 多设备同步、冲突处理和全量备份恢复。
 
-下载：[GitHub Release v0.5.1](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.1)
+下载：[GitHub Release v0.5.2](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.2)
 
 旧 Web/Capacitor、Flutter 手机实现和早期 JS 检测版已清理。当前仓库只保留原生 Android 主线、虚拟货架测试台、文档和最新测试 APK。
 
@@ -52,6 +52,20 @@ compileSdk = 36
 - 0.5.1 在重量/数量步骤和当前流程浮层提供手动测量值录入，不提供手动二维码 payload 输入。
 - 0.5.1 标签预览改为真实二维码，并按 Android 报告的屏幕 DPI 尽量以 40x30mm 实际尺寸显示。
 - 0.5.1 release 开启 R8 和资源压缩，同时提供通用 APK 与更小的 arm64 APK。
+- 0.5.2 使用系统安全区适配透明状态栏、屏幕开孔和底部手势导航。
+- 0.5.2 库存搜索支持中文、完整拼音、拼音首字母和轻微拼写错误，并提供本地候选。
+- 0.5.2 库存页支持按库位分组查看当前在库物品。
+
+## 0.5.2 改动
+
+| 范围 | 行为 | 状态 |
+|---|---|---|
+| 全面屏 | 顶部栏避开状态栏和开孔，底部导航避开手势区 | MuMu 已验收，小米 17 待复核 |
+| 本地搜索 | 首次输入时后台全量建立中文、拼音、首字母和模糊搜索索引 | 单元测试和 MuMu 已验收 |
+| 搜索候选 | 最多显示 6 个本地匹配建议，点击直接打开库存详情 | MuMu 已验收 |
+| 索引边界 | 仅为本机内存派生缓存，不进入 SQLite、WebDAV 或备份 | 已实现 |
+| 库位视图 | “按物品 / 按库位”切换，库位卡片显示数量和物品摘要 | MuMu 已验收 |
+| 库位详情 | 点击库位查看完整在库清单，再点击物品进入现有详情 | MuMu 已验收 |
 
 ## 0.5.1 改动
 
@@ -132,8 +146,8 @@ v1;type=weight;value_g=712.4
 | `mobile_android/` | 原生 Android 主线 |
 | `tools/` | 虚拟货架测试台 |
 | `docs/` | 当前设计和后续开发记录 |
-| `studio-inventory-native-0.5.1-universal.apk` | 当前通用 release APK |
-| `studio-inventory-native-0.5.1-arm64.apk` | 更小的 arm64 release APK |
+| `studio-inventory-native-0.5.2-universal.apk` | 当前通用 release APK |
+| `studio-inventory-native-0.5.2-arm64.apk` | 更小的 arm64 release APK |
 
 虚拟货架测试台：
 

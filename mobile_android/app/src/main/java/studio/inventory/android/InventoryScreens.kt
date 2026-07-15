@@ -34,6 +34,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -43,6 +44,9 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -67,23 +71,62 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.min
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventoryPage(controller: InventoryController, modifier: Modifier = Modifier) {
     var query by remember { mutableStateOf("") }
+    var viewMode by remember { mutableStateOf(InventoryViewMode.Items) }
     var typeFilter by remember { mutableStateOf<ItemType?>(null) }
     var statusFilter by remember { mutableStateOf(StockStatus.InStock) }
     var selectedItem by remember { mutableStateOf<InventoryItem?>(null) }
+    var selectedLocation by remember { mutableStateOf<LocationInventoryGroup?>(null) }
+    var searchIndex by remember { mutableStateOf<InventorySearchIndex?>(null) }
+    var indexedItems by remember { mutableStateOf<Map<String, InventoryItem>?>(null) }
+    var isIndexing by remember { mutableStateOf(false) }
+    val sourceItems = controller.snapshot.items
 
-    val entries = filterInventoryItems(
-        items = controller.snapshot.items.values,
-        query = query,
-        typeFilter = typeFilter,
-        statusFilter = statusFilter,
-    )
+    LaunchedEffect(query.isNotBlank(), sourceItems) {
+        if (query.isBlank() || (searchIndex != null && indexedItems == sourceItems)) {
+            return@LaunchedEffect
+        }
+        isIndexing = true
+        try {
+            val builtIndex = withContext(Dispatchers.Default) {
+                InventorySearchIndex.build(sourceItems.values)
+            }
+            searchIndex = builtIndex
+            indexedItems = sourceItems
+        } finally {
+            isIndexing = false
+        }
+    }
+
+    val effectiveStatus = if (viewMode == InventoryViewMode.Locations) StockStatus.InStock else statusFilter
+    val searchMatches = if (query.isNotBlank() && !isIndexing) {
+        searchIndex?.search(query, typeFilter, effectiveStatus).orEmpty()
+    } else {
+        emptyList()
+    }
+    val entries = if (query.isBlank()) {
+        filterInventoryItems(
+            items = sourceItems.values,
+            query = "",
+            typeFilter = typeFilter,
+            statusFilter = effectiveStatus,
+        )
+    } else {
+        searchMatches.map(InventorySearchMatch::item)
+    }
+    val locationGroups = if (viewMode == InventoryViewMode.Locations) {
+        groupInventoryByLocation(entries)
+    } else {
+        emptyList()
+    }
 
     LazyColumn(
         modifier = modifier
@@ -95,10 +138,48 @@ fun InventoryPage(controller: InventoryController, modifier: Modifier = Modifier
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                label = { Text("搜索 ID、名称、品牌、材料、颜色、库位") },
+                label = { Text("搜索名称、拼音、ID、品牌、颜色或库位") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+        item {
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                InventoryViewMode.entries.forEachIndexed { index, mode ->
+                    SegmentedButton(
+                        selected = viewMode == mode,
+                        onClick = { viewMode = mode },
+                        shape = SegmentedButtonDefaults.itemShape(index, InventoryViewMode.entries.size),
+                    ) {
+                        Text(mode.label)
+                    }
+                }
+            }
+        }
+        if (query.isNotBlank()) {
+            item {
+                when {
+                    isIndexing -> Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Text("正在建立本地搜索索引…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    searchMatches.isNotEmpty() -> SearchSuggestionPanel(
+                        matches = searchMatches.take(6),
+                        onSelect = { selectedItem = it },
+                    )
+                    else -> Text(
+                        "没有本地匹配项",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                    )
+                }
+            }
         }
         item {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -108,28 +189,58 @@ fun InventoryPage(controller: InventoryController, modifier: Modifier = Modifier
                 }
             }
         }
-        item {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                StockStatus.entries.forEach { status ->
-                    FilterChip(
-                        selected = statusFilter == status,
-                        onClick = { statusFilter = status },
-                        label = { Text(status.label) },
-                    )
+        if (viewMode == InventoryViewMode.Items) {
+            item {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StockStatus.entries.forEach { status ->
+                        FilterChip(
+                            selected = statusFilter == status,
+                            onClick = { statusFilter = status },
+                            label = { Text(status.label) },
+                        )
+                    }
                 }
             }
         }
         item {
-            Text("显示 ${entries.size} / ${controller.snapshot.items.size}", style = MaterialTheme.typography.bodyMedium)
-        }
-        items(entries) { item ->
-            ListCard(
-                title = "${item.id} · ${item.fixed.displayName}",
-                subtitle = "${item.type.label} · ${item.stockText} · 库位 ${item.locationText}",
-                footer = item.fixed.note,
-                onClick = { selectedItem = item },
+            Text(
+                if (viewMode == InventoryViewMode.Items) {
+                    "显示 ${entries.size} / ${sourceItems.size}"
+                } else {
+                    "显示 ${locationGroups.size} 个库位 · ${entries.size} 件在库物品"
+                },
+                style = MaterialTheme.typography.bodyMedium,
             )
         }
+        if (viewMode == InventoryViewMode.Items) {
+            items(entries, key = InventoryItem::id) { item ->
+                ListCard(
+                    title = "${item.id} · ${item.fixed.displayName}",
+                    subtitle = "${item.type.label} · ${item.stockText} · 库位 ${item.locationText}",
+                    footer = item.fixed.note,
+                    onClick = { selectedItem = item },
+                )
+            }
+        } else {
+            items(locationGroups, key = LocationInventoryGroup::key) { group ->
+                ListCard(
+                    title = group.name,
+                    subtitle = "${group.id.ifBlank { "无库位 ID" }} · ${group.items.size} 件",
+                    footer = group.items.take(3).joinToString(" · ") { it.fixed.displayName },
+                    onClick = { selectedLocation = group },
+                )
+            }
+        }
+    }
+    selectedLocation?.let { group ->
+        LocationInventorySheet(
+            group = group,
+            onDismiss = { selectedLocation = null },
+            onOpenItem = { item ->
+                selectedLocation = null
+                selectedItem = item
+            },
+        )
     }
     selectedItem?.let { item ->
         InventoryDetailSheet(
@@ -137,6 +248,120 @@ fun InventoryPage(controller: InventoryController, modifier: Modifier = Modifier
             item = item,
             onDismiss = { selectedItem = null },
         )
+    }
+}
+
+private enum class InventoryViewMode(val label: String) {
+    Items("按物品"),
+    Locations("按库位"),
+}
+
+private data class LocationInventoryGroup(
+    val id: String,
+    val name: String,
+    val items: List<InventoryItem>,
+) {
+    val key: String
+        get() = id.ifBlank { "__unassigned__" }
+}
+
+private fun groupInventoryByLocation(items: List<InventoryItem>): List<LocationInventoryGroup> {
+    return items.groupBy { it.state.locationId }
+        .map { (locationId, groupedItems) ->
+            LocationInventoryGroup(
+                id = locationId,
+                name = if (locationId.isBlank()) {
+                    "未绑定"
+                } else {
+                    groupedItems.first().state.locationName.ifBlank { locationId }
+                },
+                items = groupedItems.sortedBy { it.id },
+            )
+        }
+        .sortedWith(compareBy<LocationInventoryGroup> { it.id.isBlank() }.thenBy { it.name }.thenBy { it.id })
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LocationInventorySheet(
+    group: LocationInventoryGroup,
+    onDismiss: () -> Unit,
+    onOpenItem: (InventoryItem) -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(group.name, style = MaterialTheme.typography.titleLarge)
+            Text(
+                "${group.id.ifBlank { "无库位 ID" }} · ${group.items.size} 件在库物品",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            HorizontalDivider()
+            group.items.forEach { item ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenItem(item) }
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(item.fixed.displayName)
+                        Text(
+                            "${item.id} · ${item.type.label} · ${item.stockText}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                HorizontalDivider()
+            }
+            OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("关闭") }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun SearchSuggestionPanel(
+    matches: List<InventorySearchMatch>,
+    onSelect: (InventoryItem) -> Unit,
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                "本地匹配建议",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+            matches.forEachIndexed { index, match ->
+                if (index > 0) HorizontalDivider()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(match.item) }
+                        .padding(horizontal = 12.dp, vertical = 9.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(match.item.fixed.displayName, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "${match.item.id} · ${match.item.locationText}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

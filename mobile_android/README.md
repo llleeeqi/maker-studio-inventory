@@ -4,7 +4,7 @@
 
 ```text
 applicationId: studio.inventory.android
-versionName: 0.5.1
+versionName: 0.5.2
 minSdk: 31
 targetSdk: 36
 compileSdk: 36
@@ -40,13 +40,23 @@ app/build/outputs/apk/release/app-release.apk
 仓库根目录也会保留一份便于安装测试：
 
 ```text
-studio-inventory-native-0.5.1-universal.apk
-studio-inventory-native-0.5.1-arm64.apk
+studio-inventory-native-0.5.2-universal.apk
+studio-inventory-native-0.5.2-arm64.apk
 ```
 
-0.5.1 已在 Android 12 MuMu 模拟器完成手动重量/数量和标签实际尺寸预览验收。实体手机相机画面、大字体/软键盘和真实标签打印仍需后续复核。逐项测试步骤见 `MANUAL_TEST_MATRIX.md`。
+0.5.2 已在 Android 12 MuMu 模拟器完成全面屏、本地拼音搜索和库位分组验收。小米 17 全面屏、实体手机大字体/软键盘和真实标签打印仍需后续复核。逐项测试步骤见 `MANUAL_TEST_MATRIX.md`。
 
-下载：[GitHub Release v0.5.1](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.1)
+下载：[GitHub Release v0.5.2](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.2)
+
+## 0.5.2 变更表
+
+| 范围 | 新行为 | 验证 |
+|---|---|---|
+| 全面屏 | 顶部和底部系统栏使用安全区，不再与透明状态栏重叠 | MuMu 通过 |
+| 拼音搜索 | 中文、完整拼音、首字母、包含和轻微错字匹配 | 单元测试和 MuMu 通过 |
+| 本地索引 | 首次搜索后台全量生成；不写数据库、不进同步和备份 | MuMu 通过 |
+| 搜索候选 | 最多 6 项，点击直接进入库存详情 | MuMu 通过 |
+| 库位分组 | 按库位查看当前在库物品并下钻详情 | MuMu 通过 |
 
 ## 0.5.1 变更表
 
@@ -99,6 +109,8 @@ studio-inventory-native-0.5.1-arm64.apk
 - 切换模式时如果当前流程未完成，必须确认清空后才能切换。
 - 当前流程常驻底部导航上方，完成或取消后自动消失。
 - 库存列表项可点击查看详情，能看到耗材毛重/空盘/可用重量和零件总重/单重/数量。
+- 库存搜索支持中文、拼音、拼音首字母和轻微拼写错误，索引仅在本机后台生成。
+- 库存页可切换按物品或按库位查看，库位详情列出该位置的全部在库物品。
 - 库存详情可二次确认出库或归档，并查看最近流水。
 - 入库、出库、盘点、绑定库位、归档、撤销上一笔。
 - 库位整理模式。
