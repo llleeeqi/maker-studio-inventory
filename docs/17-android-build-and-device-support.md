@@ -1,6 +1,6 @@
 # Android 构建与设备支持记录
 
-更新时间：2026-07-15
+更新时间：2026-07-16
 
 本文保存 Android 工程的构建参数、安装包输出、标签打印机兼容边界和设备验收状态。项目介绍见仓库根目录 `README.md`，版本功能进度见 `14-current-progress.md`。
 
@@ -8,7 +8,7 @@
 
 ```text
 applicationId: studio.inventory.android
-versionName: 0.5.2
+versionName: 0.5.3
 minSdk: 31
 targetSdk: 36
 compileSdk: 36
@@ -44,8 +44,8 @@ app/build/outputs/apk/release/app-release.apk
 仓库根目录发布包：
 
 ```text
-studio-inventory-native-0.5.2-universal.apk
-studio-inventory-native-0.5.2-arm64.apk
+studio-inventory-native-0.5.3-universal.apk
+studio-inventory-native-0.5.3-arm64.apk
 ```
 
 Release 构建开启 R8 和资源压缩。通用 APK 保留全部 ABI，arm64 APK 用于常见 64 位实体 Android 手机。

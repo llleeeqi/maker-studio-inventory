@@ -1,6 +1,6 @@
 # 当前进度和恢复上下文
 
-更新时间: 2026-07-15
+更新时间: 2026-07-16
 
 ## 当前主线
 
@@ -13,9 +13,9 @@ mobile_android/
 当前可测包:
 
 ```text
-studio-inventory-native-0.5.2-universal.apk
-studio-inventory-native-0.5.2-arm64.apk
-GitHub Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.2
+studio-inventory-native-0.5.3-universal.apk
+studio-inventory-native-0.5.3-arm64.apk
+GitHub Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.3
 ```
 
 线上虚拟货架:
@@ -83,6 +83,9 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 - 流水页提供手动“检查更新”；只有点击时访问 GitHub，有更高版本直接打开对应 Release 页面。
 - 首次进入扫码页显示一次“开始使用”引导，点“开始”直接启动相机；关闭或完成后不再重复显示。
 - tools 虚拟货架已改为自包含样式，不再依赖待清理的旧 Web App；页面明确重量既可扫模拟电子秤二维码，也可在 App 手动录入。
+- 0.5.3 修复搜索物品后进入库位视图时，同库位清单仍被搜索词裁剪的问题。
+- 搜索结果现在只决定显示哪些库位；点击库位后会列出该库位全部在库耗材、零件和其他物品。
+- Android 12 MuMu 已创建“测试库位2”，用耗材和零件双向搜索并直查 SQLite 验证完整同库位清单。
 
 ## 暂缓事项
 
@@ -90,7 +93,7 @@ https://llleeeqi.github.io/maker-studio-inventory/tools/
 - 屏幕 DPI 来自 Android/设备报告，模拟器和部分手机可能报告不准；最终纸面效果仍以 200dpi 标签机实打为准。
 - 现有 JSON 只作为测试版存量数据/迁移来源，不再作为后续主要数据层扩展。
 - 还没有用两台实体 Android 设备做真实并发冲突验收；当前冲突规则由单元测试、单机流程和数据库检查覆盖。
-- 小米 17 的透明状态栏重叠修复需要用户安装 0.5.2 后复核真实开孔和手势区。
+- 小米 17 的透明状态栏重叠修复需要用户安装 0.5.3 后复核真实开孔和手势区。
 
 ## 下一轮重点
 

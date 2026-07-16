@@ -17,11 +17,11 @@
 
 ## Android 下载
 
-当前测试版本为 `0.5.2`，支持 Android 12 及以上版本。
+当前测试版本为 `0.5.3`，支持 Android 12 及以上版本。
 
-- [GitHub Release v0.5.2](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.2)
-- 通用 APK：`studio-inventory-native-0.5.2-universal.apk`
-- arm64 APK：`studio-inventory-native-0.5.2-arm64.apk`
+- [GitHub Release v0.5.3](https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.3)
+- 通用 APK：`studio-inventory-native-0.5.3-universal.apk`
+- arm64 APK：`studio-inventory-native-0.5.3-arm64.apk`
 
 ## 标签打印机
 

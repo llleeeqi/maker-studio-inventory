@@ -1,14 +1,14 @@
-# 0.5.2 验收表
+# 0.5.3 验收表
 
-2026-07-14 已在 Android 12 MuMu 模拟器完成库存闭环验收。测试页面使用仓库根目录的 `tools/index.html`；正常产品流程不提供手动 payload 输入。调试构建的受保护广播只用于自动化验收，release 构建为空实现。
+2026-07-16 已在 Android 12 MuMu 模拟器完成库存闭环和库位搜索验收。测试页面使用仓库根目录的 `tools/index.html`；正常产品流程不提供手动 payload 输入。调试构建的受保护广播只用于自动化验收，release 构建为空实现。
 
 ## 验收前准备
 
 ```text
-APK: studio-inventory-native-0.5.2-universal.apk
-版本: 0.5.2 (52)
-SHA256: ac3e09f5af91a9f3b17659d52c200d24fa30865af50d38a3c9c8f5a488ddc123
-arm64 APK SHA256: e58a6bf394482b53a4146cef8a6ed0a41982e53c4ec4bf77598eec79f522f3d4
+APK: studio-inventory-native-0.5.3-universal.apk
+版本: 0.5.3 (53)
+SHA256: 5022cf3c44536beb6e9f45221399932d6f4a9b867b42c7387bf6727ab11f2ff1
+arm64 APK SHA256: b106d6658afa9f5c802f3e2ec3e0ae68e39cbc68d06a858f36a1c05fe328e0df
 Android: 12 及以上
 ```
 

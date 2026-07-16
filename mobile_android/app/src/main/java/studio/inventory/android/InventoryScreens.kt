@@ -126,7 +126,20 @@ fun InventoryPage(controller: InventoryController, modifier: Modifier = Modifier
         searchMatches.map(InventorySearchMatch::item)
     }
     val locationGroups = if (viewMode == InventoryViewMode.Locations) {
-        groupInventoryByLocation(entries)
+        if (query.isBlank()) {
+            groupInventoryByLocation(entries)
+        } else {
+            val inStockItems = filterInventoryItems(
+                items = sourceItems.values,
+                query = "",
+                typeFilter = null,
+                statusFilter = StockStatus.InStock,
+            )
+            groupInventoryByLocation(
+                items = inStockItems,
+                visibleLocationIds = entries.mapTo(linkedSetOf()) { it.state.locationId },
+            )
+        }
     } else {
         emptyList()
     }
@@ -210,7 +223,7 @@ fun InventoryPage(controller: InventoryController, modifier: Modifier = Modifier
                 if (viewMode == InventoryViewMode.Items) {
                     "显示 ${entries.size} / ${sourceItems.size}"
                 } else {
-                    "显示 ${locationGroups.size} 个库位 · ${entries.size} 件在库物品"
+                    "显示 ${locationGroups.size} 个库位 · ${locationGroups.sumOf { it.items.size }} 件在库物品"
                 },
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -259,7 +272,7 @@ private enum class InventoryViewMode(val label: String) {
     Locations("按库位"),
 }
 
-private data class LocationInventoryGroup(
+internal data class LocationInventoryGroup(
     val id: String,
     val name: String,
     val items: List<InventoryItem>,
@@ -268,8 +281,12 @@ private data class LocationInventoryGroup(
         get() = id.ifBlank { "__unassigned__" }
 }
 
-private fun groupInventoryByLocation(items: List<InventoryItem>): List<LocationInventoryGroup> {
+internal fun groupInventoryByLocation(
+    items: Collection<InventoryItem>,
+    visibleLocationIds: Set<String>? = null,
+): List<LocationInventoryGroup> {
     return items.groupBy { it.state.locationId }
+        .filterKeys { visibleLocationIds == null || it in visibleLocationIds }
         .map { (locationId, groupedItems) ->
             LocationInventoryGroup(
                 id = locationId,

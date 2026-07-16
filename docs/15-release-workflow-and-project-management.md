@@ -3,10 +3,10 @@
 ## 当前版本
 
 ```text
-当前可测版: v0.5.2
-APK: studio-inventory-native-0.5.2-universal.apk
-推荐实体手机: studio-inventory-native-0.5.2-arm64.apk
-Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.2
+当前可测版: v0.5.3
+APK: studio-inventory-native-0.5.3-universal.apk
+推荐实体手机: studio-inventory-native-0.5.3-arm64.apk
+Release: https://github.com/llleeeqi/maker-studio-inventory/releases/tag/v0.5.3
 ```
 
 ## 工作流
@@ -41,6 +41,31 @@ GitHub Release 可打开
 ```
 
 ## 版本记录
+
+### v0.5.3
+
+库位搜索完整清单修复版本。
+
+已完成：
+
+```text
+搜索物品后切换“按库位”，搜索只筛选命中的库位
+点击库位后显示该库位全部在库物品，不再只显示搜索命中项
+库位卡数量改为完整同库位在库数量
+新增库位分组回归测试
+```
+
+验证状态：
+
+```text
+./gradlew testDebugUnitTest assembleDebug 通过
+Android 12 MuMu 创建 LOC-E2E-002“测试库位2”
+测试库位2 同时放入耗材 FIL-260716-001 和零件 PART-TEST-001
+搜索 CODEX-E2E 和 PART-TEST-001 均显示 1 个库位、2 件在库物品
+点击库位后两件物品均可见，SQLite 直查数量一致
+通用 APK: 26,811,939 bytes，SHA256 5022cf3c44536beb6e9f45221399932d6f4a9b867b42c7387bf6727ab11f2ff1
+arm64 APK: 11,262,518 bytes，SHA256 b106d6658afa9f5c802f3e2ec3e0ae68e39cbc68d06a858f36a1c05fe328e0df
+```
 
 ### v0.5.2
 
