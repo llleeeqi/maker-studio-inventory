@@ -25,8 +25,8 @@
 ├── docs/                # 当前设计和后续开发记录
 ├── README.md            # 当前状态和快速说明
 ├── 架构决策.md          # 当前技术路线取舍
-├── studio-inventory-native-0.5.1-universal.apk
-└── studio-inventory-native-0.5.1-arm64.apk
+├── studio-inventory-native-0.5.3-universal.apk
+└── studio-inventory-native-0.5.3-arm64.apk
 ```
 
 ## mobile_android/
@@ -43,7 +43,7 @@ OkHttp WebDAV
 WorkManager
 ```
 
-当前 0.5.1 测试 APK 已使用 Android SQLite schema 2，并实现本地优先加密 WebDAV 同步、全量备份恢复、手动测量值录入和真实二维码标签预览；旧 JSON snapshot 只作为自动迁移源。
+当前 0.5.3 测试 APK 已使用 Android SQLite schema 2，并实现本地优先加密 WebDAV 同步、全量备份恢复、手动测量值录入、真实二维码标签预览和完整库位清单搜索；旧 JSON snapshot 只作为自动迁移源。
 
 Android 配置：
 
@@ -65,8 +65,8 @@ compileSdk = 36
 当前 release APK：
 
 ```text
-studio-inventory-native-0.5.1-universal.apk
-studio-inventory-native-0.5.1-arm64.apk
+studio-inventory-native-0.5.3-universal.apk
+studio-inventory-native-0.5.3-arm64.apk
 ```
 
 ## tools/
@@ -94,7 +94,6 @@ android/
 mobile_flutter/
 Web/Capacitor 顶层配置
 Flutter 旧 APK
-旧 native APK
 ```
 
 后续功能直接落在 `mobile_android/`。电脑端测试只保留 `tools/` 虚拟货架。

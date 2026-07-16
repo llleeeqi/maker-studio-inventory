@@ -8,7 +8,7 @@
 mobile_android/
 ```
 
-旧的 Web/Capacitor 和 Flutter 手机路线不再作为继续开发方向。已有代码和 APK 可作为历史参考，但新功能优先落在原生 Android app。
+旧的 Web/Capacitor 和 Flutter 手机路线不再作为继续开发方向，相关代码和旧 APK 已清理。新功能优先落在原生 Android app。
 
 当前工程已创建，debug APK 已构建：
 

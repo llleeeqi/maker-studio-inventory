@@ -1,17 +1,11 @@
-node_modules/
-www/
-
-android/.gradle/
-android/build/
-android/app/build/
-android/local.properties
-
 mobile_android/.gradle/
 mobile_android/build/
 mobile_android/app/build/
 mobile_android/local.properties
 
 *.apk
+!studio-inventory-native-*-universal.apk
+!studio-inventory-native-*-arm64.apk
 *.ap_
 *.aab
 
